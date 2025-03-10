@@ -1,188 +1,61 @@
 /**
- * Game locations with associated roles
- * Each location has a name and an array of possible roles
+ * Game locations organized into packs
  */
-const locations = [
-  {
-    name: 'Hospital',
-    roles: [
-      'Doctor',
-      'Nurse',
-      'Surgeon',
-      'Patient',
-      'Therapist',
-      'Intern',
-      'Visitor',
-      'Receptionist',
-      'Anesthesiologist',
-      'Janitor'
+const locationPacks = {
+  basic: {
+    name: "Basic Locations",
+    description: "Common everyday locations",
+    locations: [
+      "School",
+      "Hospital",
+      "Beach",
+      "Restaurant",
+      "Bank",
+      "Supermarket",
+      "Movie Theater",
+      "Gym",
+      "Library",
+      "Park",
+      "Shopping Mall",
+      "Hotel"
     ]
   },
-  {
-    name: 'School',
-    roles: [
-      'Teacher',
-      'Principal',
-      'Student',
-      'Janitor',
-      'Cafeteria Worker',
-      'Security Guard',
-      'Librarian',
-      'School Nurse',
-      'Parent',
-      'Coach'
+  advanced: {
+    name: "Advanced Locations",
+    description: "More unique and challenging locations",
+    locations: [
+      "Space Station",
+      "Submarine",
+      "Aircraft Carrier",
+      "Nuclear Power Plant",
+      "Circus",
+      "Casino",
+      "Prison",
+      "Oil Rig",
+      "Ski Resort",
+      "Cruise Ship",
+      "Amusement Park",
+      "Zoo"
     ]
   },
-  {
-    name: 'Beach',
-    roles: [
-      'Lifeguard',
-      'Tourist',
-      'Surfer',
-      'Ice Cream Vendor',
-      'Fisherman',
-      'Photographer',
-      'Swimmer',
-      'Beach Volleyball Player',
-      'Sunbather',
-      'Coast Guard'
-    ]
-  },
-  {
-    name: 'Movie Theater',
-    roles: [
-      'Ticket Seller',
-      'Moviegoer',
-      'Usher',
-      'Concession Stand Worker',
-      'Manager',
-      'Projectionist',
-      'Actor/Actress',
-      'Critic',
-      'Cleaner',
-      'Security Guard'
-    ]
-  },
-  {
-    name: 'Restaurant',
-    roles: [
-      'Chef',
-      'Waiter/Waitress',
-      'Host/Hostess',
-      'Customer',
-      'Food Critic',
-      'Dishwasher',
-      'Manager',
-      'Bartender',
-      'Busboy',
-      'Delivery Driver'
-    ]
-  },
-  {
-    name: 'Gym',
-    roles: [
-      'Personal Trainer',
-      'Gym Member',
-      'Receptionist',
-      'Yoga Instructor',
-      'Weightlifter',
-      'Janitor',
-      'Manager',
-      'Nutritionist',
-      'Newcomer',
-      'Maintenance Worker'
-    ]
-  },
-  {
-    name: 'Supermarket',
-    roles: [
-      'Cashier',
-      'Customer',
-      'Manager',
-      'Shelf Stocker',
-      'Butcher',
-      'Baker',
-      'Produce Manager',
-      'Janitor',
-      'Cart Collector',
-      'Deli Worker'
-    ]
-  },
-  {
-    name: 'Airplane',
-    roles: [
-      'Pilot',
-      'Co-Pilot',
-      'Flight Attendant',
-      'First Class Passenger',
-      'Economy Passenger',
-      'Air Marshal',
-      'Child Passenger',
-      'Elderly Passenger',
-      'Business Traveler',
-      'Tourist'
-    ]
-  },
-  {
-    name: 'Bank',
-    roles: [
-      'Teller',
-      'Manager',
-      'Security Guard',
-      'Customer',
-      'Loan Officer',
-      'Janitor',
-      'Investment Advisor',
-      'Armored Car Driver',
-      'Bank Robber',
-      'New Account Specialist'
-    ]
-  },
-  {
-    name: 'Cruise Ship',
-    roles: [
-      'Captain',
-      'Passenger',
-      'Waiter/Waitress',
-      'Musician',
-      'Bartender',
-      'Deck Hand',
-      'Security Officer',
-      'Chef',
-      'Entertainer',
-      'Housekeeper'
-    ]
-  },
-  {
-    name: 'Amusement Park',
-    roles: [
-      'Ride Operator',
-      'Visitor',
-      'Food Vendor',
-      'Ticket Seller',
-      'Mascot',
-      'Janitor',
-      'Security Guard',
-      'Tour Guide',
-      'Photographer',
-      'Maintenance Worker'
-    ]
-  },
-  {
-    name: 'Zoo',
-    roles: [
-      'Zookeeper',
-      'Visitor',
-      'Veterinarian',
-      'Tour Guide',
-      'Gift Shop Clerk',
-      'Security Guard',
-      'Ticket Seller',
-      'Researcher',
-      'Photographer',
-      'Janitor'
+  tourism: {
+    name: "Tourist Attractions",
+    description: "Famous landmarks and tourist destinations",
+    locations: [
+      "Eiffel Tower",
+      "Great Wall of China",
+      "Pyramids of Giza",
+      "Colosseum",
+      "Taj Mahal",
+      "Statue of Liberty",
+      "Grand Canyon",
+      "Machu Picchu",
+      "Stonehenge",
+      "Sydney Opera House",
+      "Niagara Falls",
+      "Mount Everest Base Camp"
     ]
   }
-];
+};
 
-module.exports = locations; 
+module.exports = locationPacks; 

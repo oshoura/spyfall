@@ -11,23 +11,32 @@ export interface Player {
 
 export interface GameState {
   gameId: string;
-  state: 'lobby' | 'playing' | 'voting' | 'results';
+  state: 'lobby' | 'playing' | 'spy_guessing' | 'voting' | 'results';
   players: Player[];
   hostId: string;
   round: number;
   maxRounds: number;
-  timeRemaining: number;
   isSpy?: boolean;
   location?: string;
-  role?: string;
-  possibleRoles?: string[];
+  locationPacks?: LocationPack[];
+  voteCallers?: string[];
   results?: {
     votes: Map<string, number>;
     spyId: string;
     mostVotedId: string;
     spyWon: boolean;
     location: string;
+    spyGuess?: string;
+    spyGuessedCorrectly?: boolean;
   };
+}
+
+export interface LocationPack {
+  id: string;
+  name: string;
+  description: string;
+  locationCount: number;
+  selected: boolean;
 }
 
 class SocketService {
@@ -95,14 +104,6 @@ class SocketService {
       this.gameState.value = gameState;
     });
     
-    // Timer update
-    this.socket.on('timer-update', ({ timeRemaining }) => {
-      console.log('Timer update:', timeRemaining);
-      if (this.gameState.value) {
-        this.gameState.value.timeRemaining = timeRemaining;
-      }
-    });
-    
     // Phase change
     this.socket.on('phase-change', ({ phase }) => {
       if (this.gameState.value) {
@@ -151,6 +152,36 @@ class SocketService {
         this.gameState.value.players = this.gameState.value.players.filter(p => p.id !== playerId);
         this.gameState.value.hostId = newHostId;
       }
+    });
+    
+    // Location packs updated
+    this.socket.on('location-packs-updated', ({ locationPacks }) => {
+      if (this.gameState.value) {
+        this.gameState.value.locationPacks = locationPacks;
+      }
+    });
+    
+    // Vote called
+    this.socket.on('vote-called', ({ playerId, voteCallers }) => {
+      if (this.gameState.value) {
+        this.gameState.value.voteCallers = voteCallers;
+      }
+    });
+    
+    // Voting started
+    this.socket.on('voting-started', ({ state }) => {
+      this.gameState.value = state;
+    });
+    
+    // Spy guessed
+    this.socket.on('spy-guessed', (data) => {
+      // This will be handled by the round-ended event
+      console.log('Spy guessed:', data);
+    });
+    
+    // Round ended (replaces voting-complete)
+    this.socket.on('round-ended', (gameState) => {
+      this.gameState.value = gameState;
     });
   }
   
@@ -315,6 +346,67 @@ class SocketService {
       this.connected.value = false;
       this.gameState.value = null;
     }
+  }
+  
+  // Set location packs
+  public setLocationPacks(packIds: string[]): Promise<{ locationPacks: LocationPack[] }> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('Socket not initialized'));
+        return;
+      }
+      
+      this.socket.emit('set-location-packs', { packIds }, (response: any) => {
+        if (response.success) {
+          resolve({ locationPacks: response.locationPacks });
+        } else {
+          reject(new Error(response.error || 'Failed to set location packs'));
+        }
+      });
+    });
+  }
+  
+  /**
+   * Call for a vote to find the spy
+   */
+  public callForVote(): Promise<{ votingStarted: boolean }> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('Socket not initialized'));
+        return;
+      }
+      
+      this.socket.emit('call-for-vote', {}, (response: any) => {
+        if (response.success) {
+          resolve({ votingStarted: response.votingStarted });
+        } else {
+          reject(new Error(response.error || 'Failed to call for vote'));
+        }
+      });
+    });
+  }
+  
+  /**
+   * Spy makes a guess for the location
+   */
+  public makeSpyGuess(locationGuess: string): Promise<{ isCorrect: boolean, actualLocation: string }> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('Socket not initialized'));
+        return;
+      }
+      
+      this.socket.emit('spy-guess', { locationGuess }, (response: any) => {
+        if (response.success) {
+          resolve({ 
+            isCorrect: response.isCorrect,
+            actualLocation: response.actualLocation
+          });
+        } else {
+          reject(new Error(response.error || 'Failed to make spy guess'));
+        }
+      });
+    });
   }
 }
 

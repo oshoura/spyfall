@@ -1,4 +1,4 @@
-const locations = require('../data/locations');
+const locationPacks = require('../data/locations');
 const { generateCode } = require('../utils/codeGenerator');
 
 /**
@@ -8,6 +8,7 @@ const { generateCode } = require('../utils/codeGenerator');
 const GameState = {
   LOBBY: 'lobby',
   PLAYING: 'playing',
+  SPY_GUESSING: 'spy_guessing',
   VOTING: 'voting',
   RESULTS: 'results'
 };
@@ -32,6 +33,9 @@ class Game {
     this.maxRounds = 5;
     this.usedLocations = new Set();
     this.lastUpdateTime = Date.now();
+    this.selectedLocationPacks = ['basic']; // Default to basic pack
+    this.voteCallers = new Set(); // Players who called for a vote
+    this.spyGuess = null; // The spy's guess for the location
   }
 
   /**
@@ -87,13 +91,46 @@ class Game {
   }
 
   /**
+   * Set the location packs to use for the game
+   * @param {string[]} packIds - Array of pack IDs
+   */
+  setLocationPacks(packIds) {
+    if (packIds && packIds.length > 0) {
+      // Filter to only include valid pack IDs
+      this.selectedLocationPacks = packIds.filter(id => locationPacks[id]);
+      
+      // If no valid packs, default to basic
+      if (this.selectedLocationPacks.length === 0) {
+        this.selectedLocationPacks = ['basic'];
+      }
+    }
+  }
+
+  /**
+   * Get all available locations from selected packs
+   * @returns {string[]} - Array of location names
+   */
+  getAvailableLocations() {
+    let allLocations = [];
+    
+    for (const packId of this.selectedLocationPacks) {
+      if (locationPacks[packId]) {
+        allLocations = allLocations.concat(locationPacks[packId].locations);
+      }
+    }
+    
+    return allLocations;
+  }
+
+  /**
    * Start a new round
    * @returns {Object} - Round information
    */
   startNewRound() {
     this.currentRound++;
     this.state = GameState.PLAYING;
-    this.timeRemaining = this.roundTime;
+    this.voteCallers.clear();
+    this.spyGuess = null;
     this.lastUpdateTime = Date.now();
     
     // Reset player states
@@ -101,44 +138,103 @@ class Game {
       player.resetForNewRound();
     }
     
-    // Select a random location that hasn't been used yet
-    let availableLocations = locations.filter(loc => !this.usedLocations.has(loc.name));
+    // Get all available locations from selected packs
+    const allLocations = this.getAvailableLocations();
+    
+    // Filter out used locations
+    let availableLocations = allLocations.filter(loc => !this.usedLocations.has(loc));
+    
+    // If all locations have been used, reset
     if (availableLocations.length === 0) {
-      // If all locations have been used, reset
       this.usedLocations.clear();
-      availableLocations = locations;
+      availableLocations = allLocations;
     }
     
+    // Select a random location
     const locationIndex = Math.floor(Math.random() * availableLocations.length);
     this.currentLocation = availableLocations[locationIndex];
-    this.usedLocations.add(this.currentLocation.name);
+    this.usedLocations.add(this.currentLocation);
     
-    // Assign roles
+    // Assign spy role
     const playerIds = Array.from(this.players.keys());
     const spyIndex = Math.floor(Math.random() * playerIds.length);
     
-    // Shuffle roles
-    const roles = [...this.currentLocation.roles];
-    for (let i = roles.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [roles[i], roles[j]] = [roles[j], roles[i]];
-    }
-    
-    let roleIndex = 0;
     playerIds.forEach((playerId, index) => {
       const player = this.players.get(playerId);
-      if (index === spyIndex) {
-        player.assignRole(true);
-      } else {
-        player.assignRole(false, roles[roleIndex % roles.length]);
-        roleIndex++;
-      }
+      player.isSpy = (index === spyIndex);
     });
     
     return {
       round: this.currentRound,
-      location: this.currentLocation.name,
-      timeRemaining: this.timeRemaining
+      location: this.currentLocation
+    };
+  }
+
+  /**
+   * Call for a vote to find the spy
+   * @param {string} playerId - ID of the player calling for a vote
+   * @returns {Object} - Vote call information
+   */
+  callForVote(playerId) {
+    if (this.state !== GameState.PLAYING) {
+      return { success: false, error: 'Cannot call for vote in current state' };
+    }
+    
+    const player = this.players.get(playerId);
+    if (!player) {
+      return { success: false, error: 'Player not found' };
+    }
+    
+    if (player.isSpy) {
+      return { success: false, error: 'Spy cannot call for a vote' };
+    }
+    
+    // Add player to vote callers
+    this.voteCallers.add(playerId);
+    
+    // Check if we have enough vote callers
+    const shouldStartVoting = this.voteCallers.size >= 2;
+    
+    if (shouldStartVoting) {
+      this.state = GameState.VOTING;
+    }
+    
+    return { 
+      success: true, 
+      voteCallers: Array.from(this.voteCallers),
+      votingStarted: shouldStartVoting
+    };
+  }
+
+  /**
+   * Spy makes a guess for the location
+   * @param {string} playerId - ID of the player (spy) making the guess
+   * @param {string} locationGuess - The location guess
+   * @returns {Object} - Guess result
+   */
+  makeSpyGuess(playerId, locationGuess) {
+    if (this.state !== GameState.PLAYING && this.state !== GameState.SPY_GUESSING) {
+      return { success: false, error: 'Cannot make a guess in current state' };
+    }
+    
+    const player = this.players.get(playerId);
+    if (!player) {
+      return { success: false, error: 'Player not found' };
+    }
+    
+    if (!player.isSpy) {
+      return { success: false, error: 'Only the spy can make a location guess' };
+    }
+    
+    this.state = GameState.RESULTS;
+    this.spyGuess = locationGuess;
+    
+    const isCorrect = locationGuess.toLowerCase() === this.currentLocation.toLowerCase();
+    
+    return { 
+      success: true, 
+      isCorrect,
+      actualLocation: this.currentLocation
     };
   }
 
@@ -218,13 +314,16 @@ class Game {
     }
     
     const spyWon = mostVotedId !== spyId;
+    const spyGuessedCorrectly = this.spyGuess && this.spyGuess.toLowerCase() === this.currentLocation.toLowerCase();
     
     return {
       votes,
       spyId,
       mostVotedId,
       spyWon,
-      location: this.currentLocation.name
+      location: this.currentLocation,
+      spyGuess: this.spyGuess,
+      spyGuessedCorrectly
     };
   }
 
@@ -250,6 +349,20 @@ class Game {
   }
 
   /**
+   * Get all available location packs
+   * @returns {Object[]} - Array of location pack info
+   */
+  getLocationPacks() {
+    return Object.entries(locationPacks).map(([id, pack]) => ({
+      id,
+      name: pack.name,
+      description: pack.description,
+      locationCount: pack.locations.length,
+      selected: this.selectedLocationPacks.includes(id)
+    }));
+  }
+
+  /**
    * Get game state safe to send to a specific player
    * @param {string} playerId - ID of the player
    * @returns {Object} - Game state for the player
@@ -265,7 +378,8 @@ class Game {
       hostId: this.hostId,
       round: this.currentRound,
       maxRounds: this.maxRounds,
-      timeRemaining: this.timeRemaining
+      locationPacks: this.getLocationPacks(),
+      voteCallers: Array.from(this.voteCallers)
     };
     
     if (!player) {
@@ -273,13 +387,13 @@ class Game {
     }
     
     // Add player-specific information
-    if (this.state === GameState.PLAYING || this.state === GameState.VOTING) {
+    if (this.state === GameState.PLAYING || 
+        this.state === GameState.VOTING || 
+        this.state === GameState.SPY_GUESSING) {
       baseState.isSpy = player.isSpy;
       
       if (!player.isSpy) {
-        baseState.location = this.currentLocation.name;
-        baseState.role = player.role;
-        baseState.possibleRoles = this.currentLocation.roles;
+        baseState.location = this.currentLocation;
       }
     }
     

@@ -1,0 +1,12 @@
+{
+  "name": "spyfall-scripts",
+  "version": "1.0.0",
+  "description": "Scripts for the Spyfall game",
+  "main": "generate-location-images.js",
+  "scripts": {
+    "generate-images": "node generate-location-images.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.2"
+  }
+} 

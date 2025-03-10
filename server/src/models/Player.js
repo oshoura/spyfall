@@ -12,7 +12,6 @@ class Player {
     this.name = name;
     this.ready = false;
     this.isSpy = false;
-    this.role = null;
     this.hasVoted = false;
     this.votedFor = null;
   }
@@ -27,21 +26,10 @@ class Player {
   }
 
   /**
-   * Assign a role to the player
-   * @param {boolean} isSpy - Whether the player is a spy
-   * @param {string} role - Role of the player (null if spy)
-   */
-  assignRole(isSpy, role = null) {
-    this.isSpy = isSpy;
-    this.role = role;
-  }
-
-  /**
    * Reset the player's game state for a new round
    */
   resetForNewRound() {
     this.isSpy = false;
-    this.role = null;
     this.hasVoted = false;
     this.votedFor = null;
   }

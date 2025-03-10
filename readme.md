@@ -89,6 +89,42 @@ The project is divided into two main parts:
 6. **Results**: The spy is revealed, and points are awarded
 7. **Next Round**: Play multiple rounds with different locations and a new spy each time
 
+## Location Packs
+
+The game includes several location packs:
+
+- **Basic Locations**: Common everyday locations like School, Hospital, Restaurant, etc.
+- **Advanced Locations**: More unique and challenging locations like Space Station, Submarine, Casino, etc.
+- **Tourist Attractions**: Famous landmarks and tourist destinations like Eiffel Tower, Pyramids of Giza, etc.
+
+The host can select which location packs to use for the game.
+
+## Image Generation
+
+The game includes a script to generate images for all locations using OpenAI's DALL-E API. To generate the images:
+
+1. Navigate to the scripts directory:
+   ```
+   cd scripts
+   ```
+
+2. Install dependencies:
+   ```
+   npm install
+   ```
+
+3. Set your OpenAI API key:
+   ```
+   export OPENAI_API_KEY=your_api_key_here
+   ```
+
+4. Run the script:
+   ```
+   npm run generate-images
+   ```
+
+See the [scripts README](scripts/README.md) for more details.
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.

@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import HomePage from '../views/HomePage.vue'
 import LandingPage from '../views/LandingPage.vue'
 import PartyLobby from '../views/PartyLobby.vue'
-import GameRoom from '../views/GameRoom.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -9,6 +9,11 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
+      component: HomePage
+    },
+    {
+      path: '/play',
+      name: 'play',
       component: LandingPage
     },
     {
@@ -19,7 +24,7 @@ const router = createRouter({
     {
       path: '/game',
       name: 'game',
-      component: GameRoom
+      component: () => import('../views/GameRoom.vue')
     }
   ]
 })

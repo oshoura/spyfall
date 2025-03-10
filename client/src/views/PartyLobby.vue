@@ -37,6 +37,28 @@
           <option value="10">10</option>
         </select>
       </div>
+      
+      <div class="location-packs">
+        <h3>Location Packs</h3>
+        <div v-if="locationPacks.length === 0" class="loading-packs">
+          Loading location packs...
+        </div>
+        <div v-else class="pack-list">
+          <div 
+            v-for="pack in locationPacks" 
+            :key="pack.id" 
+            class="pack-item"
+            :class="{ selected: pack.selected }"
+            @click="toggleLocationPack(pack.id)"
+          >
+            <div class="pack-header">
+              <h4>{{ pack.name }}</h4>
+              <span class="pack-count">{{ pack.locationCount }} locations</span>
+            </div>
+            <p class="pack-description">{{ pack.description }}</p>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="actions">
@@ -89,6 +111,9 @@ const canStartGame = computed(() => {
 
 // Round time in minutes
 const roundTime = ref(8)
+
+// Add this to the computed properties
+const locationPacks = computed(() => gameState.value?.locationPacks || [])
 
 // Watch for game state changes
 watch(() => gameState.value?.state, (newState) => {
@@ -144,6 +169,40 @@ const copyPartyCode = () => {
       console.error('Could not copy text: ', err)
     })
 }
+
+// Add this method
+const toggleLocationPack = async (packId: string) => {
+  if (!isHost.value || isLoading.value) return;
+  
+  try {
+    isLoading.value = true;
+    errorMessage.value = '';
+    
+    // Get current selected packs
+    const currentSelectedPacks = locationPacks.value
+      .filter(pack => pack.selected)
+      .map(pack => pack.id);
+    
+    // Toggle the selected pack
+    let newSelectedPacks: string[];
+    if (currentSelectedPacks.includes(packId)) {
+      // Don't allow deselecting the last pack
+      if (currentSelectedPacks.length <= 1) {
+        return;
+      }
+      newSelectedPacks = currentSelectedPacks.filter(id => id !== packId);
+    } else {
+      newSelectedPacks = [...currentSelectedPacks, packId];
+    }
+    
+    await socketService.setLocationPacks(newSelectedPacks);
+  } catch (error) {
+    console.error('Error setting location packs:', error);
+    errorMessage.value = error instanceof Error ? error.message : 'Failed to update location packs';
+  } finally {
+    isLoading.value = false;
+  }
+};
 </script>
 
 <style scoped>
@@ -303,5 +362,64 @@ h1 {
 .you-badge {
   background-color: #17a2b8;
   color: white;
+}
+
+.location-packs {
+  margin-top: 1.5rem;
+}
+
+.pack-list {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.pack-item {
+  background-color: white;
+  padding: 1rem;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pack-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.pack-item.selected {
+  border-color: #28a745;
+  background-color: #f8fff9;
+}
+
+.pack-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.pack-header h4 {
+  margin: 0;
+  color: #2c3e50;
+}
+
+.pack-count {
+  font-size: 0.875rem;
+  color: #6c757d;
+}
+
+.pack-description {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #6c757d;
+}
+
+.loading-packs {
+  text-align: center;
+  padding: 1rem;
+  color: #6c757d;
+  font-style: italic;
 }
 </style> 

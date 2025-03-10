@@ -6,24 +6,6 @@ const { GameState } = require('../models/Game');
  * @param {Server} io - Socket.io server instance
  */
 function initializeSocketController(io) {
-  // Set up timer updates
-  const TIMER_INTERVAL = 1000; // 1 second
-  setInterval(() => {
-    gameManager.updateTimers();
-    
-    // Broadcast updated time to all games in playing state
-    for (const game of gameManager.games.values()) {
-      if (game.state === GameState.PLAYING) {
-        io.to(game.id).emit('timer-update', { timeRemaining: game.timeRemaining });
-        
-        // If time is up, transition to voting phase
-        if (game.timeRemaining === 0) {
-          io.to(game.id).emit('phase-change', { phase: GameState.VOTING });
-        }
-      }
-    }
-  }, TIMER_INTERVAL);
-  
   // Clean up inactive games every hour
   setInterval(() => {
     gameManager.cleanupInactiveGames();
@@ -102,6 +84,46 @@ function initializeSocketController(io) {
       });
     });
     
+    // Set location packs
+    socket.on('set-location-packs', ({ packIds }, callback) => {
+      const game = gameManager.getGameByPlayerId(socket.id);
+      
+      if (!game) {
+        return callback({
+          success: false,
+          error: 'Game not found'
+        });
+      }
+      
+      // Only the host can change location packs
+      if (socket.id !== game.hostId) {
+        return callback({
+          success: false,
+          error: 'Only the host can change location packs'
+        });
+      }
+      
+      // Only allowed in lobby state
+      if (game.state !== GameState.LOBBY) {
+        return callback({
+          success: false,
+          error: 'Cannot change location packs once the game has started'
+        });
+      }
+      
+      game.setLocationPacks(packIds);
+      
+      // Notify all players about the updated packs
+      io.to(game.id).emit('location-packs-updated', {
+        locationPacks: game.getLocationPacks()
+      });
+      
+      callback({
+        success: true,
+        locationPacks: game.getLocationPacks()
+      });
+    });
+    
     // Start the game
     socket.on('start-game', (_, callback) => {
       const game = gameManager.getGameByPlayerId(socket.id);
@@ -166,6 +188,86 @@ function initializeSocketController(io) {
       });
     });
     
+    // Call for a vote
+    socket.on('call-for-vote', (_, callback) => {
+      const game = gameManager.getGameByPlayerId(socket.id);
+      
+      if (!game) {
+        return callback({
+          success: false,
+          error: 'Game not found'
+        });
+      }
+      
+      const result = game.callForVote(socket.id);
+      
+      if (!result.success) {
+        return callback({
+          success: false,
+          error: result.error
+        });
+      }
+      
+      // Notify all players about the vote call
+      io.to(game.id).emit('vote-called', {
+        playerId: socket.id,
+        voteCallers: result.voteCallers
+      });
+      
+      // If voting should start, notify all players
+      if (result.votingStarted) {
+        io.to(game.id).emit('voting-started', {
+          state: game.getStateForPlayer(null)
+        });
+      }
+      
+      callback({
+        success: true,
+        votingStarted: result.votingStarted
+      });
+    });
+    
+    // Spy makes a location guess
+    socket.on('spy-guess', ({ locationGuess }, callback) => {
+      const game = gameManager.getGameByPlayerId(socket.id);
+      
+      if (!game) {
+        return callback({
+          success: false,
+          error: 'Game not found'
+        });
+      }
+      
+      const result = game.makeSpyGuess(socket.id, locationGuess);
+      
+      if (!result.success) {
+        return callback({
+          success: false,
+          error: result.error
+        });
+      }
+      
+      // Notify all players about the spy's guess and the result
+      io.to(game.id).emit('spy-guessed', {
+        playerId: socket.id,
+        locationGuess,
+        isCorrect: result.isCorrect,
+        actualLocation: result.actualLocation
+      });
+      
+      // Send results to each player
+      for (const playerId of game.players.keys()) {
+        const playerState = game.getStateForPlayer(playerId);
+        io.to(playerId).emit('round-ended', playerState);
+      }
+      
+      callback({
+        success: true,
+        isCorrect: result.isCorrect,
+        actualLocation: result.actualLocation
+      });
+    });
+    
     // Submit a vote
     socket.on('submit-vote', ({ targetPlayerId }, callback) => {
       const game = gameManager.getGameByPlayerId(socket.id);
@@ -203,7 +305,7 @@ function initializeSocketController(io) {
         // Send results to each player
         for (const playerId of game.players.keys()) {
           const playerState = game.getStateForPlayer(playerId);
-          io.to(playerId).emit('voting-complete', playerState);
+          io.to(playerId).emit('round-ended', playerState);
         }
       }
       

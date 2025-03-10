@@ -10,7 +10,7 @@
       <div class="create-party">
         <h2>Create New Party</h2>
         <input
-          v-model="playerName"
+          v-model="createPlayerName"
           type="text"
           placeholder="Enter your name"
           class="input"
@@ -34,7 +34,7 @@
           :disabled="isLoading"
         />
         <input
-          v-model="playerName"
+          v-model="joinPlayerName"
           type="text"
           placeholder="Enter your name"
           class="input"
@@ -49,6 +49,8 @@
         </button>
       </div>
     </div>
+    
+    <router-link to="/" class="back-link">← Back to Home</router-link>
   </div>
 </template>
 
@@ -58,13 +60,14 @@ import { useRouter } from 'vue-router'
 import socketService from '../services/socketService'
 
 const router = useRouter()
-const playerName = ref('')
+const createPlayerName = ref('')
+const joinPlayerName = ref('')
 const partyCode = ref('')
 const isLoading = ref(false)
 const errorMessage = ref('')
 
 const createParty = async () => {
-  if (!playerName.value) {
+  if (!createPlayerName.value) {
     alert('Please enter your name')
     return
   }
@@ -73,7 +76,7 @@ const createParty = async () => {
     isLoading.value = true
     errorMessage.value = ''
     
-    const { gameId } = await socketService.createGame(playerName.value)
+    const { gameId } = await socketService.createGame(createPlayerName.value)
     console.log('Game created with ID:', gameId)
     
     router.push('/lobby')
@@ -86,7 +89,7 @@ const createParty = async () => {
 }
 
 const joinParty = async () => {
-  if (!playerName.value || !partyCode.value) {
+  if (!joinPlayerName.value || !partyCode.value) {
     alert('Please enter both your name and the party code')
     return
   }
@@ -95,7 +98,7 @@ const joinParty = async () => {
     isLoading.value = true
     errorMessage.value = ''
     
-    await socketService.joinGame(partyCode.value, playerName.value)
+    await socketService.joinGame(partyCode.value, joinPlayerName.value)
     
     router.push('/lobby')
   } catch (error) {
@@ -119,6 +122,7 @@ h1 {
   font-size: 3rem;
   margin-bottom: 2rem;
   color: #2c3e50;
+  letter-spacing: 1px;
 }
 
 .actions {
@@ -135,12 +139,20 @@ h1 {
   padding: 2rem;
   background-color: #f8f9fa;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.create-party:hover,
+.join-party:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
 }
 
 h2 {
   margin-bottom: 1.5rem;
   color: #2c3e50;
+  font-size: 1.5rem;
 }
 
 .input {
@@ -150,6 +162,13 @@ h2 {
   border: 1px solid #dee2e6;
   border-radius: 4px;
   font-size: 1rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+  outline: none;
 }
 
 .button {
@@ -161,11 +180,12 @@ h2 {
   border-radius: 4px;
   font-size: 1rem;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, transform 0.2s;
 }
 
-.button:hover {
+.button:hover:not(:disabled) {
   background-color: #0056b3;
+  transform: translateY(-2px);
 }
 
 .error-message {
@@ -175,10 +195,28 @@ h2 {
   margin-bottom: 1.5rem;
   border-radius: 4px;
   text-align: center;
+  animation: fadeIn 0.3s;
 }
 
 .button:disabled {
   background-color: #6c757d;
   cursor: not-allowed;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.back-link {
+  display: inline-block;
+  margin-top: 2rem;
+  color: #6c757d;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.back-link:hover {
+  color: #007bff;
 }
 </style> 
