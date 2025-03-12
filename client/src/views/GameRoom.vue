@@ -360,7 +360,7 @@ const returnToLobby = async () => {
   }
 }
 
-function findPackForLocation(location: string): string {
+function findPackForLocation(_: string): string {
   // We're not actually using the location parameter in this implementation
   // but we need to keep it for the function signature
   // This comment acknowledges we're aware of the unused parameter
