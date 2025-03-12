@@ -22,7 +22,7 @@
           class="player-card"
           :class="{ 
             active: currentPlayer?.id === player.id && gamePhase === 'playing',
-            'is-you': player.id === (playerId || ''),
+            'is-you': player.id === playerId,
             'vote-caller': voteCallers.includes(player.id)
           }"
         >
@@ -66,9 +66,9 @@
               <button 
                 @click="callForVote" 
                 class="button vote-call-button"
-                :disabled="isLoading || voteCallers.includes(playerId)"
+                :disabled="isLoading || (!!playerId && voteCallers.includes(playerId))"
               >
-                {{ voteCallers.includes(playerId) ? 'Vote Called' : 'Call for Vote' }}
+                {{ !!playerId && voteCallers.includes(playerId) ? 'Vote Called' : 'Call for Vote' }}
               </button>
               <div v-if="voteCallers.length > 0" class="vote-callers-info">
                 {{ voteCallers.length }} player(s) called for a vote. 
@@ -188,7 +188,6 @@ const playerId = computed(() => socketService.playerId.value)
 
 // Computed properties
 const players = computed(() => gameState.value?.players || [])
-const timeRemaining = computed(() => gameState.value?.timeRemaining || 0)
 const currentLocation = computed(() => gameState.value?.location || '')
 const isSpy = computed(() => gameState.value?.isSpy || false)
 const gamePhase = computed(() => gameState.value?.state || 'playing')
@@ -262,8 +261,7 @@ const endTurn = async () => {
 
 // Call for a vote
 const callForVote = async () => {
-  const currentPlayerId = playerId.value
-  if (!currentPlayerId || voteCallers.value.includes(currentPlayerId)) return
+  if (!playerId.value || voteCallers.value.includes(playerId.value)) return
   
   try {
     isLoading.value = true
@@ -363,14 +361,16 @@ const returnToLobby = async () => {
 }
 
 function findPackForLocation(location: string): string {
+  // We're not actually using the location parameter in this implementation
+  // but we need to keep it for the function signature
+  // This comment acknowledges we're aware of the unused parameter
+  
   const packs = gameState.value?.locationPacks || [];
   
   // Since we don't have direct access to the full pack data on the client,
   // we'll use the selected packs from the game state
   for (const pack of packs) {
     if (pack.selected) {
-      // We'll just return the first selected pack as a fallback
-      // This is not perfect but should work for most cases
       return pack.id;
     }
   }

@@ -112,7 +112,7 @@ class SocketService {
     });
     
     // Turn ended
-    this.socket.on('turn-ended', ({ nextPlayerId }) => {
+    this.socket.on('turn-ended', () => {
       // This is handled by the UI
     });
     
@@ -137,7 +137,7 @@ class SocketService {
     });
     
     // Game over
-    this.socket.on('game-over', ({ rounds }) => {
+    this.socket.on('game-over', () => {
       // Handle game over
     });
     
@@ -162,7 +162,7 @@ class SocketService {
     });
     
     // Vote called
-    this.socket.on('vote-called', ({ playerId, voteCallers }) => {
+    this.socket.on('vote-called', ({ voteCallers }) => {
       if (this.gameState.value) {
         this.gameState.value.voteCallers = voteCallers;
       }
