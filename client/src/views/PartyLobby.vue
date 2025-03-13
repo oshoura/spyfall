@@ -1,71 +1,77 @@
 <template>
-  <div class="party-lobby">
-    <h1>Party Lobby</h1>
+  <div class="max-w-3xl mx-auto p-8">
+    <h1 class="text-4xl text-center text-gray-800 mb-8">Party Lobby</h1>
     
-    <div v-if="errorMessage" class="error-message">
+    <div v-if="errorMessage" class="bg-red-100 text-red-800 p-3 mb-6 rounded-lg text-center">
       {{ errorMessage }}
     </div>
     
-    <div class="party-info">
-      <h2>Party Code: <span class="party-code" @click="copyPartyCode">{{ partyCode }}</span></h2>
-      <p class="invite-text">Share this code with your friends to join! (Click to copy)</p>
+    <div class="text-center mb-8">
+      <h2 class="text-2xl mb-2">Party Code: 
+        <span class="bg-gray-100 px-4 py-2 rounded font-mono text-xl cursor-pointer hover:bg-gray-200 transition-colors" @click="copyPartyCode">{{ partyCode }}</span>
+      </h2>
+      <p class="text-gray-600 mt-2">Share this code with your friends to join! (Click to copy)</p>
     </div>
 
-    <div class="players-section">
-      <h2>Players ({{ players.length }})</h2>
-      <div class="players-list">
-        <div v-for="player in players" :key="player.id" class="player-card">
-          <span class="player-name">
+    <div class="bg-gray-100 p-6 rounded-lg mb-8">
+      <h2 class="text-2xl mb-4">Players ({{ players.length }})</h2>
+      <div class="grid gap-4">
+        <div v-for="player in players" :key="player.id" class="flex justify-between items-center p-4 bg-white rounded shadow-sm">
+          <span class="flex items-center">
             {{ player.name }}
-            <span v-if="player.id === gameState?.hostId" class="host-badge">Host</span>
-            <span v-if="player.id === playerId" class="you-badge">You</span>
+            <span v-if="player.id === gameState?.hostId" class="ml-2 text-xs bg-purple-500 text-white px-2 py-0.5 rounded-full">Host</span>
+            <span v-if="player.id === playerId" class="ml-2 text-xs bg-cyan-500 text-white px-2 py-0.5 rounded-full">You</span>
           </span>
-          <span class="player-status" :class="{ ready: player.ready }">
+          <span :class="{ 'bg-green-500 text-white': player.ready, 'bg-gray-300 text-gray-700': !player.ready }" class="px-3 py-1 rounded-full text-sm">
             {{ player.ready ? 'Ready' : 'Not Ready' }}
           </span>
         </div>
       </div>
     </div>
 
-    <div class="game-settings" v-if="isHost">
-      <h2>Game Settings</h2>
-      <div class="setting">
-        <label>Round Time (minutes):</label>
-        <select v-model="roundTime">
+    <div class="bg-gray-100 p-6 rounded-lg mb-8" v-if="isHost">
+      <h2 class="text-2xl mb-4">Game Settings</h2>
+      <div class="mb-4">
+        <label class="block mb-2">Round Time (minutes):</label>
+        <select v-model="roundTime" class="p-2 rounded border border-gray-300 w-full md:w-auto">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
           <option value="5">5</option>
           <option value="8">8</option>
           <option value="10">10</option>
         </select>
       </div>
       
-      <div class="location-packs">
-        <h3>Location Packs</h3>
-        <div v-if="locationPacks.length === 0" class="loading-packs">
+      <div class="mt-6">
+        <h3 class="text-xl mb-3">Location Packs</h3>
+        <div v-if="locationPacks.length === 0" class="text-gray-500 italic">
           Loading location packs...
         </div>
-        <div v-else class="pack-list">
+        <div v-else class="grid gap-4 md:grid-cols-2">
           <div 
             v-for="pack in locationPacks" 
             :key="pack.id" 
-            class="pack-item"
-            :class="{ selected: pack.selected }"
+            class="p-4 rounded-lg cursor-pointer transition-all hover:shadow-md"
+            :class="{ 'bg-green-50 border-2 border-green-500': pack.selected, 'bg-white border border-gray-200': !pack.selected }"
             @click="toggleLocationPack(pack.id)"
           >
-            <div class="pack-header">
-              <h4>{{ pack.name }}</h4>
-              <span class="pack-count">{{ pack.locationCount }} locations</span>
+            <div class="flex justify-between items-center mb-2">
+              <h4 class="font-bold">{{ pack.name }}</h4>
+              <span class="text-sm text-gray-600">{{ pack.locationCount }} locations</span>
             </div>
-            <p class="pack-description">{{ pack.description }}</p>
+            <p class="text-gray-600 text-sm">{{ pack.description }}</p>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="actions">
+    <div class="flex flex-col md:flex-row gap-4 justify-center">
       <button 
         @click="toggleReady" 
-        class="button" 
-        :class="{ ready: isReady }"
+        class="px-8 py-3 rounded font-medium transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+        :class="{ 'bg-green-600 text-white hover:bg-green-700': isReady, 'bg-blue-600 text-white hover:bg-blue-700': !isReady }"
         :disabled="isLoading"
       >
         {{ isReady ? 'Ready!' : 'Mark as Ready' }}
@@ -73,7 +79,7 @@
       <button
         v-if="isHost"
         @click="startGame"
-        class="button start-button"
+        class="px-8 py-3 bg-purple-600 text-white rounded font-medium hover:bg-purple-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
         :disabled="!canStartGame || isLoading"
       >
         {{ isLoading ? 'Starting...' : 'Start Game' }}
@@ -203,223 +209,4 @@ const toggleLocationPack = async (packId: string) => {
     isLoading.value = false;
   }
 };
-</script>
-
-<style scoped>
-.party-lobby {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 2rem;
-}
-
-h1 {
-  text-align: center;
-  color: #2c3e50;
-  margin-bottom: 2rem;
-}
-
-.party-info {
-  text-align: center;
-  margin-bottom: 2rem;
-}
-
-.party-code {
-  background-color: #f8f9fa;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  font-family: monospace;
-  font-size: 1.2rem;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.party-code:hover {
-  background-color: #e9ecef;
-}
-
-.invite-text {
-  color: #6c757d;
-  margin-top: 0.5rem;
-}
-
-.players-section {
-  background-color: #f8f9fa;
-  padding: 1.5rem;
-  border-radius: 8px;
-  margin-bottom: 2rem;
-}
-
-.players-list {
-  display: grid;
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.player-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem;
-  background-color: white;
-  border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.player-status {
-  padding: 0.25rem 0.75rem;
-  border-radius: 999px;
-  background-color: #dc3545;
-  color: white;
-  font-size: 0.875rem;
-}
-
-.player-status.ready {
-  background-color: #28a745;
-}
-
-.game-settings {
-  background-color: #f8f9fa;
-  padding: 1.5rem;
-  border-radius: 8px;
-  margin-bottom: 2rem;
-}
-
-.setting {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.setting select {
-  padding: 0.5rem;
-  border-radius: 4px;
-  border: 1px solid #dee2e6;
-}
-
-.actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-}
-
-.button {
-  padding: 0.75rem 2rem;
-  border: none;
-  border-radius: 4px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.button:not(.ready) {
-  background-color: #6c757d;
-  color: white;
-}
-
-.button.ready {
-  background-color: #28a745;
-  color: white;
-}
-
-.start-button {
-  background-color: #007bff;
-  color: white;
-}
-
-.start-button:disabled {
-  background-color: #6c757d;
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-.button:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.error-message {
-  background-color: #f8d7da;
-  color: #721c24;
-  padding: 0.75rem;
-  margin-bottom: 1.5rem;
-  border-radius: 4px;
-  text-align: center;
-}
-
-.host-badge, .you-badge {
-  display: inline-block;
-  font-size: 0.75rem;
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  margin-left: 0.5rem;
-}
-
-.host-badge {
-  background-color: #ffc107;
-  color: #212529;
-}
-
-.you-badge {
-  background-color: #17a2b8;
-  color: white;
-}
-
-.location-packs {
-  margin-top: 1.5rem;
-}
-
-.pack-list {
-  display: grid;
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.pack-item {
-  background-color: white;
-  padding: 1rem;
-  border-radius: 4px;
-  border: 2px solid transparent;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.pack-item:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.pack-item.selected {
-  border-color: #28a745;
-  background-color: #f8fff9;
-}
-
-.pack-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-
-.pack-header h4 {
-  margin: 0;
-  color: #2c3e50;
-}
-
-.pack-count {
-  font-size: 0.875rem;
-  color: #6c757d;
-}
-
-.pack-description {
-  margin: 0;
-  font-size: 0.875rem;
-  color: #6c757d;
-}
-
-.loading-packs {
-  text-align: center;
-  padding: 1rem;
-  color: #6c757d;
-  font-style: italic;
-}
-</style> 
+</script> 

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-
+// No need for favicon setup as it's now in index.html
 </script>
 
 <template>

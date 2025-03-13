@@ -1,48 +1,48 @@
 <template>
-  <div class="landing-page">
-    <h1>Spyfall</h1>
+  <div class="max-w-3xl mx-auto p-8">
+    <h1 class="text-4xl text-center text-gray-800 mb-8">Spyfall</h1>
     
-    <div v-if="errorMessage" class="error-message">
+    <div v-if="errorMessage" class="bg-red-100 text-red-800 p-3 mb-6 rounded-lg text-center">
       {{ errorMessage }}
     </div>
     
-    <div class="actions">
-      <div class="create-party">
-        <h2>Create New Party</h2>
+    <div class="flex flex-col md:flex-row gap-8 justify-center">
+      <div class="flex-1 min-w-[300px] p-8 bg-gray-100 rounded-lg shadow-md hover:transform hover:-translate-y-1 hover:shadow-lg transition-all">
+        <h2 class="text-2xl mb-6 text-gray-800">Create New Party</h2>
         <input
           v-model="createPlayerName"
           type="text"
           placeholder="Enter your name"
-          class="input"
+          class="w-full p-3 mb-4 border border-gray-300 rounded text-base focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
           :disabled="isLoading"
         />
         <button 
           @click="createParty" 
-          class="button"
+          class="w-full p-3 bg-blue-600 text-white border-none rounded text-base cursor-pointer hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
           :disabled="isLoading"
         >
           {{ isLoading ? 'Creating...' : 'Create Party' }}
         </button>
       </div>
-      <div class="join-party">
-        <h2>Join Party</h2>
+      <div class="flex-1 min-w-[300px] p-8 bg-gray-100 rounded-lg shadow-md hover:transform hover:-translate-y-1 hover:shadow-lg transition-all">
+        <h2 class="text-2xl mb-6 text-gray-800">Join Party</h2>
         <input
           v-model="partyCode"
           type="text"
           placeholder="Enter party code"
-          class="input"
+          class="w-full p-3 mb-4 border border-gray-300 rounded text-base focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
           :disabled="isLoading"
         />
         <input
           v-model="joinPlayerName"
           type="text"
           placeholder="Enter your name"
-          class="input"
+          class="w-full p-3 mb-4 border border-gray-300 rounded text-base focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
           :disabled="isLoading"
         />
         <button 
           @click="joinParty" 
-          class="button"
+          class="w-full p-3 bg-blue-600 text-white border-none rounded text-base cursor-pointer hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
           :disabled="isLoading"
         >
           {{ isLoading ? 'Joining...' : 'Join Party' }}
@@ -50,7 +50,7 @@
       </div>
     </div>
     
-    <router-link to="/" class="back-link">← Back to Home</router-link>
+    <router-link to="/" class="inline-block mt-8 text-gray-500 hover:text-blue-600 transition-colors">← Back to Home</router-link>
   </div>
 </template>
 
@@ -108,115 +108,4 @@ const joinParty = async () => {
     isLoading.value = false
   }
 }
-</script>
-
-<style scoped>
-.landing-page {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
-
-h1 {
-  font-size: 3rem;
-  margin-bottom: 2rem;
-  color: #2c3e50;
-  letter-spacing: 1px;
-}
-
-.actions {
-  display: flex;
-  gap: 2rem;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.create-party,
-.join-party {
-  flex: 1;
-  min-width: 300px;
-  padding: 2rem;
-  background-color: #f8f9fa;
-  border-radius: 8px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s, box-shadow 0.3s;
-}
-
-.create-party:hover,
-.join-party:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-}
-
-h2 {
-  margin-bottom: 1.5rem;
-  color: #2c3e50;
-  font-size: 1.5rem;
-}
-
-.input {
-  width: 100%;
-  padding: 0.75rem;
-  margin-bottom: 1rem;
-  border: 1px solid #dee2e6;
-  border-radius: 4px;
-  font-size: 1rem;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-.input:focus {
-  border-color: #007bff;
-  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
-  outline: none;
-}
-
-.button {
-  width: 100%;
-  padding: 0.75rem;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background-color 0.2s, transform 0.2s;
-}
-
-.button:hover:not(:disabled) {
-  background-color: #0056b3;
-  transform: translateY(-2px);
-}
-
-.error-message {
-  background-color: #f8d7da;
-  color: #721c24;
-  padding: 0.75rem;
-  margin-bottom: 1.5rem;
-  border-radius: 4px;
-  text-align: center;
-  animation: fadeIn 0.3s;
-}
-
-.button:disabled {
-  background-color: #6c757d;
-  cursor: not-allowed;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.back-link {
-  display: inline-block;
-  margin-top: 2rem;
-  color: #6c757d;
-  text-decoration: none;
-  transition: color 0.2s;
-}
-
-.back-link:hover {
-  color: #007bff;
-}
-</style> 
+</script> 

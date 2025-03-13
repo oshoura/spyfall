@@ -1,41 +1,41 @@
 <template>
-  <div class="game-room">
-    <div v-if="errorMessage" class="error-message">
+  <div class="max-w-7xl mx-auto p-8 grid gap-8">
+    <div v-if="errorMessage" class="bg-red-100 text-red-800 p-3 mb-6 rounded-lg text-center">
       {{ errorMessage }}
     </div>
     
-    <div class="game-header">
-      <div class="round-info">Round {{ gameState?.round || 1 }}</div>
-      <div v-if="!isSpy" class="location">
-        Location: <span class="location-name">{{ currentLocation }}</span>
+    <div class="flex justify-between items-center bg-gray-100 p-4 rounded-lg">
+      <div class="text-2xl font-bold text-gray-800">Round {{ gameState?.round || 1 }}</div>
+      <div v-if="!isSpy" class="text-2xl">
+        Location: <span class="font-bold text-blue-600">{{ currentLocation }}</span>
       </div>
-      <div v-else class="location spy">
+      <div v-else class="text-2xl font-bold text-red-600 animate-pulse">
         You are the spy! Try to figure out the location.
       </div>
     </div>
 
-    <div class="game-content">
-      <div class="players-list">
+    <div class="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-8">
+      <div class="bg-gray-100 p-6 rounded-lg grid gap-4">
         <div
           v-for="player in players"
           :key="player.id"
-          class="player-card"
+          class="flex justify-between items-center p-4 bg-white rounded shadow-sm"
           :class="{ 
-            active: currentPlayer?.id === player.id && gamePhase === 'playing',
-            'is-you': player.id === playerId,
-            'vote-caller': voteCallers.includes(player.id)
+            'border-2 border-blue-500': currentPlayer?.id === player.id && gamePhase === 'playing',
+            'border-2 border-cyan-500': player.id === playerId,
+            'border-l-4 border-l-yellow-400': voteCallers.includes(player.id)
           }"
         >
-          <div class="player-name">
+          <div class="flex items-center">
             {{ player.name }}
-            <span v-if="player.id === playerId" class="you-badge">You</span>
-            <span v-if="voteCallers.includes(player.id)" class="vote-caller-badge">Vote Caller</span>
+            <span v-if="player.id === playerId" class="ml-2 text-xs bg-cyan-500 text-white px-2 py-0.5 rounded-full">You</span>
+            <span v-if="voteCallers.includes(player.id)" class="ml-2 text-xs bg-yellow-400 text-gray-800 px-2 py-0.5 rounded-full">Vote Caller</span>
           </div>
-          <div class="player-actions" v-if="gamePhase === 'voting'">
+          <div v-if="gamePhase === 'voting'">
             <button
               @click="votePlayer(player.id)"
               :disabled="hasVoted || player.id === playerId || isLoading"
-              class="vote-button"
+              class="px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               Vote
             </button>
@@ -43,34 +43,34 @@
         </div>
       </div>
 
-      <div class="game-actions">
-        <div v-if="gamePhase === 'playing'" class="question-section">
-          <div v-if="currentPlayer?.id === playerId" class="your-turn">
-            <h3>It's your turn!</h3>
-            <p>Ask another player a question about the location.</p>
-            <button @click="endTurn" class="button" :disabled="isLoading">
+      <div class="bg-gray-100 p-8 rounded-lg text-center">
+        <div v-if="gamePhase === 'playing'" class="space-y-6">
+          <div v-if="currentPlayer?.id === playerId" class="p-6 rounded-lg animate-[pulse_2s_infinite]">
+            <h3 class="text-xl font-bold mb-2">It's your turn!</h3>
+            <p class="mb-4">Ask another player a question about the location.</p>
+            <button @click="endTurn" class="px-8 py-3 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 transform hover:-translate-y-1 transition-all disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none" :disabled="isLoading">
               {{ isLoading ? 'Ending Turn...' : 'End Turn' }}
             </button>
           </div>
-          <div v-else class="waiting">
+          <div v-else class="text-gray-500 italic">
             <p>{{ currentPlayer?.name }}'s turn</p>
           </div>
           
-          <div class="action-buttons">
-            <div v-if="isSpy" class="spy-actions">
-              <button @click="showSpyGuessModal = true" class="button spy-guess-button">
+          <div class="mt-8 flex flex-col gap-4 items-center">
+            <div v-if="isSpy" class="flex flex-col gap-4 items-center">
+              <button @click="showSpyGuessModal = true" class="px-8 py-3 bg-red-600 text-white rounded font-medium hover:bg-red-700 transform hover:-translate-y-1 transition-all">
                 Make a Guess
               </button>
             </div>
-            <div v-else class="non-spy-actions">
+            <div v-else class="flex flex-col gap-4 items-center">
               <button 
                 @click="callForVote" 
-                class="button vote-call-button"
+                class="px-8 py-3 bg-yellow-400 text-gray-800 rounded font-medium hover:bg-yellow-500 transform hover:-translate-y-1 transition-all disabled:bg-gray-200 disabled:text-gray-500 disabled:cursor-not-allowed disabled:transform-none"
                 :disabled="isLoading || (!!playerId && voteCallers.includes(playerId))"
               >
                 {{ !!playerId && voteCallers.includes(playerId) ? 'Vote Called' : 'Call for Vote' }}
               </button>
-              <div v-if="voteCallers.length > 0" class="vote-callers-info">
+              <div v-if="voteCallers.length > 0" class="mt-2 text-sm text-gray-500">
                 {{ voteCallers.length }} player(s) called for a vote. 
                 {{ voteCallers.length >= 2 ? 'Voting will start soon!' : 'Need one more vote call to start voting.' }}
               </div>
@@ -78,51 +78,51 @@
           </div>
         </div>
 
-        <div v-if="gamePhase === 'voting'" class="voting-section">
-          <h3>Time to vote!</h3>
-          <p>Who do you think is the spy?</p>
-          <div v-if="hasVoted" class="waiting">
+        <div v-if="gamePhase === 'voting'" class="space-y-4">
+          <h3 class="text-xl font-bold">Time to vote!</h3>
+          <p class="mb-4">Who do you think is the spy?</p>
+          <div v-if="hasVoted" class="text-gray-500 italic">
             Waiting for other players to vote...
           </div>
         </div>
         
-        <div v-if="gamePhase === 'results'" class="results-section">
-          <h3>Round Results</h3>
+        <div v-if="gamePhase === 'results'" class="space-y-6">
+          <h3 class="text-2xl font-bold">Round Results</h3>
           
-          <div v-if="votingResults" class="results-content">
-            <div v-if="votingResults.spyGuess" class="spy-guess-result">
+          <div v-if="votingResults" class="bg-white p-6 rounded-lg mt-4">
+            <div v-if="votingResults.spyGuess" class="space-y-4">
               <p>
                 The spy ({{ players.find(p => p.id === votingResults?.spyId)?.name }}) 
                 guessed: <strong>{{ votingResults.spyGuess }}</strong>
               </p>
-              <p class="result-message" :class="{ 'spy-won': votingResults.spyGuessedCorrectly }">
+              <p class="text-2xl font-bold my-6" :class="{ 'text-red-600': votingResults.spyGuessedCorrectly, 'text-green-600': !votingResults.spyGuessedCorrectly }">
                 {{ votingResults.spyGuessedCorrectly ? 'The spy guessed correctly and won!' : 'The spy guessed incorrectly and lost!' }}
               </p>
             </div>
             
-            <div v-else class="voting-result">
-              <p class="spy-reveal">
+            <div v-else class="space-y-4">
+              <p class="text-lg">
                 The spy was: <strong>{{ players.find(p => p.id === votingResults?.spyId)?.name }}</strong>
               </p>
               
-              <p class="location-reveal">
+              <p class="text-lg">
                 The location was: <strong>{{ votingResults?.location }}</strong>
               </p>
               
-              <p class="result-message" :class="{ 'spy-won': votingResults?.spyWon }">
+              <p class="text-2xl font-bold my-6" :class="{ 'text-red-600': votingResults?.spyWon, 'text-green-600': !votingResults?.spyWon }">
                 {{ votingResults?.spyWon ? 'The spy won!' : 'The spy was caught!' }}
               </p>
             </div>
             
-            <div class="next-actions" v-if="isHost">
-              <button @click="nextRound" class="button" :disabled="isLoading">
+            <div class="flex gap-4 justify-center mt-6" v-if="isHost">
+              <button @click="nextRound" class="px-8 py-3 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed" :disabled="isLoading">
                 {{ isLoading ? 'Loading...' : 'Next Round' }}
               </button>
-              <button @click="returnToLobby" class="button secondary" :disabled="isLoading">
+              <button @click="returnToLobby" class="px-8 py-3 bg-gray-600 text-white rounded font-medium hover:bg-gray-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed" :disabled="isLoading">
                 Return to Lobby
               </button>
             </div>
-            <div v-else class="waiting">
+            <div v-else class="text-gray-500 italic mt-4">
               Waiting for host to start the next round...
             </div>
           </div>
@@ -130,38 +130,38 @@
       </div>
     </div>
 
-    <div class="locations-reference" v-if="!isSpy && gamePhase !== 'results'">
-      <h3>Location: {{ currentLocation }}</h3>
-      <div class="location-image-container">
+    <div class="bg-gray-100 p-6 rounded-lg text-center" v-if="!isSpy && gamePhase !== 'results'">
+      <h3 class="text-xl font-bold mb-4">Location: {{ currentLocation }}</h3>
+      <div class="h-[300px] flex justify-center items-center bg-white rounded overflow-hidden">
         <img 
           v-if="locationImage" 
           :src="locationImage" 
           :alt="currentLocation" 
-          class="location-image"
+          class="max-w-full max-h-full object-contain"
         />
-        <div v-else class="location-image-placeholder">
+        <div v-else class="text-gray-500 italic">
           No image available
         </div>
       </div>
     </div>
     
-    <div v-if="showSpyGuessModal" class="modal-overlay">
-      <div class="modal-content">
-        <h3>Make Your Guess</h3>
-        <p>If you guess the correct location, you win! If not, you lose.</p>
+    <div v-if="showSpyGuessModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white p-8 rounded-lg w-[90%] max-w-[500px] shadow-lg">
+        <h3 class="text-xl font-bold mb-4 text-gray-800">Make Your Guess</h3>
+        <p class="mb-6 text-gray-600">If you guess the correct location, you win! If not, you lose.</p>
         
         <input 
           v-model="spyGuess" 
           type="text" 
           placeholder="Enter location name" 
-          class="input"
+          class="w-full p-3 mb-6 border border-gray-300 rounded text-base focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
         />
         
-        <div class="modal-actions">
-          <button @click="submitSpyGuess" class="button" :disabled="!spyGuess || isLoading">
+        <div class="flex gap-4 justify-end">
+          <button @click="submitSpyGuess" class="px-8 py-3 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed" :disabled="!spyGuess || isLoading">
             {{ isLoading ? 'Submitting...' : 'Submit Guess' }}
           </button>
-          <button @click="showSpyGuessModal = false" class="button secondary">
+          <button @click="showSpyGuessModal = false" class="px-8 py-3 bg-gray-600 text-white rounded font-medium hover:bg-gray-700 transition-colors">
             Cancel
           </button>
         </div>
@@ -377,337 +377,4 @@ function findPackForLocation(_: string): string {
   
   return 'basic'; // Default to basic pack
 }
-</script>
-
-<style scoped>
-.game-room {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem;
-  display: grid;
-  gap: 2rem;
-}
-
-.game-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: #f8f9fa;
-  padding: 1rem 2rem;
-  border-radius: 8px;
-}
-
-.round-info {
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #2c3e50;
-}
-
-.location {
-  font-size: 1.5rem;
-}
-
-.location-name {
-  font-weight: bold;
-  color: #007bff;
-}
-
-.game-content {
-  display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 2rem;
-}
-
-.players-list {
-  background-color: #f8f9fa;
-  padding: 1.5rem;
-  border-radius: 8px;
-  display: grid;
-  gap: 1rem;
-}
-
-.player-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  background-color: white;
-  border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.player-card.active {
-  border: 2px solid #007bff;
-}
-
-.player-card.vote-caller {
-  border-left: 4px solid #ffc107;
-}
-
-.game-actions {
-  background-color: #f8f9fa;
-  padding: 2rem;
-  border-radius: 8px;
-  text-align: center;
-}
-
-.your-turn {
-  animation: highlight 2s infinite;
-  padding: 1.5rem;
-  border-radius: 8px;
-  margin-bottom: 2rem;
-}
-
-@keyframes highlight {
-  0% { background-color: #f8f9fa; }
-  50% { background-color: #e3f2fd; }
-  100% { background-color: #f8f9fa; }
-}
-
-.action-buttons {
-  margin-top: 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.spy-actions, .non-spy-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  align-items: center;
-}
-
-.spy-guess-button {
-  background-color: #dc3545;
-}
-
-.spy-guess-button:hover {
-  background-color: #c82333;
-}
-
-.vote-call-button {
-  background-color: #ffc107;
-  color: #212529;
-}
-
-.vote-call-button:hover:not(:disabled) {
-  background-color: #e0a800;
-}
-
-.vote-call-button:disabled {
-  background-color: #e9ecef;
-  color: #6c757d;
-}
-
-.vote-callers-info {
-  margin-top: 0.5rem;
-  font-size: 0.875rem;
-  color: #6c757d;
-}
-
-.button {
-  padding: 0.75rem 2rem;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.button:hover:not(:disabled) {
-  background-color: #0056b3;
-  transform: translateY(-1px);
-}
-
-.button:disabled {
-  background-color: #6c757d;
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-.vote-button {
-  padding: 0.5rem 1rem;
-  background-color: #dc3545;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.vote-button:disabled {
-  background-color: #6c757d;
-  cursor: not-allowed;
-}
-
-.locations-reference {
-  background-color: #f8f9fa;
-  padding: 1.5rem;
-  border-radius: 8px;
-  text-align: center;
-}
-
-.location-image-container {
-  margin-top: 1rem;
-  max-width: 100%;
-  height: 300px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: white;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.location-image {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-}
-
-.location-image-placeholder {
-  color: #6c757d;
-  font-style: italic;
-}
-
-.waiting {
-  color: #6c757d;
-  font-style: italic;
-}
-
-.error-message {
-  background-color: #f8d7da;
-  color: #721c24;
-  padding: 0.75rem;
-  margin-bottom: 1.5rem;
-  border-radius: 8px;
-  text-align: center;
-}
-
-.location.spy {
-  color: #dc3545;
-  font-weight: bold;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% { opacity: 0.7; }
-  50% { opacity: 1; }
-  100% { opacity: 0.7; }
-}
-
-.player-card.is-you {
-  border: 2px solid #17a2b8;
-}
-
-.you-badge, .vote-caller-badge {
-  display: inline-block;
-  font-size: 0.75rem;
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  margin-left: 0.5rem;
-}
-
-.you-badge {
-  background-color: #17a2b8;
-  color: white;
-}
-
-.vote-caller-badge {
-  background-color: #ffc107;
-  color: #212529;
-}
-
-.results-section {
-  text-align: center;
-}
-
-.results-content {
-  background-color: white;
-  padding: 1.5rem;
-  border-radius: 8px;
-  margin-top: 1rem;
-}
-
-.spy-reveal, .location-reveal {
-  font-size: 1.2rem;
-  margin-bottom: 1rem;
-}
-
-.result-message {
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: #28a745;
-  margin: 1.5rem 0;
-}
-
-.result-message.spy-won {
-  color: #dc3545;
-}
-
-.next-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  margin-top: 1.5rem;
-}
-
-.button.secondary {
-  background-color: #6c757d;
-}
-
-.button.secondary:hover {
-  background-color: #5a6268;
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background-color: white;
-  padding: 2rem;
-  border-radius: 8px;
-  width: 90%;
-  max-width: 500px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.modal-content h3 {
-  margin-top: 0;
-  margin-bottom: 1rem;
-  color: #2c3e50;
-}
-
-.modal-content p {
-  margin-bottom: 1.5rem;
-  color: #6c757d;
-}
-
-.input {
-  width: 100%;
-  padding: 0.75rem;
-  margin-bottom: 1.5rem;
-  border: 1px solid #dee2e6;
-  border-radius: 4px;
-  font-size: 1rem;
-}
-
-.modal-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-}
-</style> 
+</script> 
