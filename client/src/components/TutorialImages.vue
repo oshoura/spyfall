@@ -127,6 +127,29 @@
       <text x="400" y="285" text-anchor="middle" font-size="16" fill="white">Next Round</text>
     </svg>
 
+    <svg v-else-if="type === 'make-move'" viewBox="0 0 800 400" class="tutorial-svg">
+      <rect width="800" height="400" fill="#f8f9fa" />
+      <rect x="100" y="50" width="600" height="300" rx="8" fill="white" stroke="#dee2e6" />
+      
+      <rect x="150" y="70" width="500" height="40" rx="4" fill="#f8f9fa" />
+      <text x="180" y="95" font-size="18" fill="#2c3e50">3:20</text>
+      <text x="500" y="95" font-size="18" fill="#2c3e50">Location: <tspan fill="#007bff">???</tspan></text>
+      
+      <rect x="150" y="130" width="500" height="100" rx="4" fill="#f8f9fa" />
+      <text x="400" y="170" text-anchor="middle" font-size="18" fill="#2c3e50">You are the Spy!</text>
+      <text x="400" y="200" text-anchor="middle" font-size="14" fill="#6c757d">Try to figure out the location or avoid detection</text>
+      
+      <rect x="150" y="240" width="240" height="90" rx="4" fill="#f8f9fa" />
+      <text x="270" y="270" text-anchor="middle" font-size="16" fill="#2c3e50">Guess the Location</text>
+      <rect x="200" y="290" width="140" height="30" rx="4" fill="#dc3545" />
+      <text x="270" y="310" text-anchor="middle" font-size="14" fill="white">Make a Guess</text>
+      
+      <rect x="410" y="240" width="240" height="90" rx="4" fill="#f8f9fa" />
+      <text x="530" y="270" text-anchor="middle" font-size="16" fill="#2c3e50">Vote for the Spy</text>
+      <rect x="460" y="290" width="140" height="30" rx="4" fill="#007bff" />
+      <text x="530" y="310" text-anchor="middle" font-size="14" fill="white">Call a Vote</text>
+    </svg>
+
     <svg v-else viewBox="0 0 800 400" class="tutorial-svg">
       <rect width="800" height="400" fill="#f8f9fa" />
       <text x="400" y="200" text-anchor="middle" font-size="24" fill="#6c757d">Image placeholder</text>
@@ -136,7 +159,7 @@
 
 <script setup lang="ts">
 defineProps<{
-  type: 'create-party' | 'location-packs' | 'start-game' | 'asking-questions' | 'voting' | 'multiple-rounds'
+  type: 'create-party' | 'location-packs' | 'start-game' | 'asking-questions' | 'voting' | 'multiple-rounds' | 'make-move'
 }>();
 </script>
 
