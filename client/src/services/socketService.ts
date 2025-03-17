@@ -20,6 +20,9 @@ export interface GameState {
   location?: string;
   locationPacks?: LocationPack[];
   voteCallers?: string[];
+  roundTime?: number; // Round time in minutes
+  timerStarted?: string; // ISO timestamp when the timer started
+  timerEnded?: string; // ISO timestamp when the timer ended
   results?: {
     votes: Map<string, number>;
     spyId: string;
@@ -136,6 +139,21 @@ class SocketService {
       this.gameState.value = gameState;
     });
     
+    // Timer started
+    this.socket.on('timer-started', ({ timestamp, roundTime }) => {
+      if (this.gameState.value) {
+        this.gameState.value.timerStarted = timestamp;
+        this.gameState.value.roundTime = roundTime;
+      }
+    });
+    
+    // Timer ended
+    this.socket.on('timer-ended', ({ timestamp }) => {
+      if (this.gameState.value) {
+        this.gameState.value.timerEnded = timestamp;
+      }
+    });
+    
     // Game over
     this.socket.on('game-over', () => {
       // Handle game over
@@ -246,14 +264,14 @@ class SocketService {
   }
   
   // Start the game
-  public startGame(): Promise<{ round: number }> {
+  public startGame(settings?: { roundTime?: number, noMaxTime?: boolean }): Promise<{ round: number }> {
     return new Promise((resolve, reject) => {
       if (!this.socket) {
         reject(new Error('Socket not initialized'));
         return;
       }
       
-      this.socket.emit('start-game', {}, (response: any) => {
+      this.socket.emit('start-game', settings || {}, (response: any) => {
         if (response.success) {
           resolve({ round: response.round });
         } else {
@@ -358,9 +376,46 @@ class SocketService {
       
       this.socket.emit('set-location-packs', { packIds }, (response: any) => {
         if (response.success) {
+          if (this.gameState.value) {
+            this.gameState.value.locationPacks = response.locationPacks;
+          }
           resolve({ locationPacks: response.locationPacks });
         } else {
           reject(new Error(response.error || 'Failed to set location packs'));
+        }
+      });
+    });
+  }
+  
+  // Set round time
+  public setRoundTime(minutes: number): Promise<{ roundTime: number }> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('Socket not initialized'));
+        return;
+      }
+      
+      // Set a timeout for the socket emit
+      const timeout = setTimeout(() => {
+        reject(new Error('Server did not respond in time'));
+      }, 4000);
+      
+      this.socket.emit('set-round-time', { minutes }, (response: any) => {
+        clearTimeout(timeout);
+        
+        if (response && response.success) {
+          if (this.gameState.value) {
+            this.gameState.value.roundTime = response.roundTime || minutes;
+          }
+          resolve({ roundTime: response.roundTime || minutes });
+        } else {
+          // If the server doesn't support this feature yet, just resolve with the minutes
+          // This allows the UI to work even if the server isn't updated
+          console.warn('Server may not support set-round-time yet, using client value');
+          if (this.gameState.value) {
+            this.gameState.value.roundTime = minutes;
+          }
+          resolve({ roundTime: minutes });
         }
       });
     });

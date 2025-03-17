@@ -77,7 +77,7 @@ class Game {
    * @returns {boolean} - Whether all players are ready
    */
   areAllPlayersReady() {
-    if (this.players.size < 3) {
+    if (this.players.size < 2) {
       return false;
     }
     
@@ -267,20 +267,29 @@ class Game {
    * @returns {boolean} - Whether the vote was recorded successfully
    */
   recordVote(playerId, targetId) {
-    if (this.state !== GameState.VOTING) {
+    // Allow voting during playing or voting phase
+    if (this.state !== GameState.PLAYING && this.state !== GameState.VOTING) {
       return false;
     }
     
     const player = this.players.get(playerId);
-    if (!player || player.hasVoted) {
+    if (!player || player.hasVoted || player.isSpy) {
       return false;
     }
     
     player.vote(targetId);
     
-    // Check if all players have voted
-    const allVoted = Array.from(this.players.values()).every(p => p.hasVoted);
-    if (allVoted) {
+    // If we're in playing phase, transition to voting phase
+    if (this.state === GameState.PLAYING) {
+      this.state = GameState.VOTING;
+    }
+    
+    // Check if all non-spy players have voted
+    const allNonSpyPlayersVoted = Array.from(this.players.values())
+      .filter(p => !p.isSpy)
+      .every(p => p.hasVoted);
+      
+    if (allNonSpyPlayersVoted) {
       this.state = GameState.RESULTS;
     }
     
@@ -379,7 +388,8 @@ class Game {
       round: this.currentRound,
       maxRounds: this.maxRounds,
       locationPacks: this.getLocationPacks(),
-      voteCallers: Array.from(this.voteCallers)
+      voteCallers: Array.from(this.voteCallers),
+      roundTime: this.roundTime / 60 // Convert seconds to minutes for the client
     };
     
     if (!player) {

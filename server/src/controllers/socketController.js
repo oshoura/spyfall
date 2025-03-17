@@ -125,7 +125,7 @@ function initializeSocketController(io) {
     });
     
     // Start the game
-    socket.on('start-game', (_, callback) => {
+    socket.on('start-game', (settings, callback) => {
       const game = gameManager.getGameByPlayerId(socket.id);
       
       if (!game) {
@@ -151,6 +151,15 @@ function initializeSocketController(io) {
         });
       }
       
+      // Process round time settings if provided
+      if (settings && typeof settings === 'object') {
+        if (settings.roundTime !== undefined) {
+          // Convert minutes to seconds for the backend
+          const roundTimeSeconds = settings.noMaxTime ? 0 : (settings.roundTime * 60);
+          game.roundTime = roundTimeSeconds;
+        }
+      }
+      
       // Start a new round
       const roundInfo = game.startNewRound();
       
@@ -158,6 +167,15 @@ function initializeSocketController(io) {
       for (const playerId of game.players.keys()) {
         const playerState = game.getStateForPlayer(playerId);
         io.to(playerId).emit('game-started', playerState);
+      }
+      
+      // Start the timer if there's a time limit
+      if (game.roundTime > 0) {
+        const timestamp = new Date().toISOString();
+        io.to(game.id).emit('timer-started', {
+          timestamp,
+          roundTime: game.roundTime / 60 // Convert seconds back to minutes for the client
+        });
       }
       
       callback({
@@ -279,10 +297,20 @@ function initializeSocketController(io) {
         });
       }
       
-      if (game.state !== GameState.VOTING) {
+      // Allow voting during playing phase or voting phase
+      if (game.state !== GameState.PLAYING && game.state !== GameState.VOTING) {
         return callback({
           success: false,
           error: 'Voting is not active'
+        });
+      }
+      
+      // Check if the player is a spy (spies can't vote)
+      const player = game.players.get(socket.id);
+      if (player && player.isSpy) {
+        return callback({
+          success: false,
+          error: 'Spies cannot vote for other players'
         });
       }
       
@@ -300,7 +328,7 @@ function initializeSocketController(io) {
         playerId: socket.id
       });
       
-      // If all players have voted, transition to results
+      // If all non-spy players have voted, transition to results
       if (game.state === GameState.RESULTS) {
         // Send results to each player
         for (const playerId of game.players.keys()) {
