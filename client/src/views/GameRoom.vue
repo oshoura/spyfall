@@ -1,13 +1,13 @@
 <template>
   <div class="min-h-screen bg-gray-50 py-8 md:py-12">
-    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
       <div v-if="errorMessage" class="bg-red-100 text-red-800 p-4 mb-6 rounded-lg text-center max-w-2xl mx-auto">
         {{ errorMessage }}
       </div>
       
       <!-- Game Header -->
       <div class="bg-white p-4 md:p-5 rounded-xl shadow-sm border border-gray-200 mb-6">
-        <div class="flex flex-col md:flex-row justify-between items-center gap-3">
+        <div class="flex flex-col justify-between items-center gap-3">
           <div class="text-xl font-bold text-gray-800">Round {{ gameState?.round || 1 }}</div>
           
           <!-- Timer -->
@@ -29,17 +29,24 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-6 mb-6">
+      <!-- Vertical Cards Layout -->
+      <div class="grid grid-cols-1 gap-6 mb-6">
         <!-- Players List -->
         <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
-          <h2 class="text-lg font-bold mb-3 text-gray-800">Players</h2>
+          <div class="flex justify-between items-center mb-3">
+            <h2 class="text-lg font-bold text-gray-800">Players</h2>
+          </div>
+          
+          <div v-if="voteCallers.length > 0" class="mb-3 text-sm text-gray-600 bg-yellow-50 p-2 rounded-lg border border-yellow-200">
+            {{ voteCallers.length }} player(s) calling for a vote
+          </div>
           
           <!-- Use PlayerMarker component for non-spies -->
           <div v-if="!isSpy && gamePhase === 'playing'">
             <p class="text-sm text-gray-600 mb-3">Click to star a player you suspect, click again to scratch them out, click a third time to reset.</p>
             <PlayerMarker 
               :gamePlayers="players" 
-              :currentPlayerId="playerId" 
+              :currentPlayerId="playerId || ''" 
               :hostId="gameState?.hostId || ''"
               :showVoteButton="true"
               @vote="votePlayer"
@@ -77,207 +84,171 @@
             </div>
           </div>
         </div>
-
-        <!-- Game Actions -->
-        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
-          <div v-if="gamePhase === 'playing'" class="space-y-5">
-            <div v-if="currentPlayer?.id === playerId" class="p-4 bg-orange-50 rounded-lg border border-orange-200">
-              <h3 class="text-lg font-bold mb-2 text-gray-800">It's your turn!</h3>
-              <p class="mb-3 text-gray-600">Ask another player a question about the location.</p>
+          
+        <!-- Voting Phase -->
+        <div v-if="gamePhase === 'voting'" class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+          <div class="p-4 bg-orange-50 rounded-lg border border-orange-200 text-center">
+            <h3 class="text-lg font-bold mb-2 text-gray-800">Voting Time!</h3>
+            <p class="mb-3 text-gray-600">Vote for who you think is the spy.</p>
+          </div>
+        </div>
+        
+        <!-- Results Phase -->
+        <div v-if="gamePhase === 'results'" class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+          <div class="p-4 bg-orange-50 rounded-lg border border-orange-200 text-center">
+            <h3 class="text-lg font-bold mb-2 text-gray-800">Round Results</h3>
+            
+            <div v-if="votingResults.spyGuess" class="space-y-3">
+              <p class="text-gray-600">
+                The spy ({{ players.find(p => p.id === votingResults?.spyId)?.name }}) 
+                guessed: <strong>{{ votingResults.spyGuess }}</strong>
+              </p>
+              <p class="text-lg font-bold my-4 text-center" :class="{ 'text-orange-600': votingResults.spyGuessedCorrectly, 'text-green-600': !votingResults.spyGuessedCorrectly }">
+                {{ votingResults.spyGuessedCorrectly ? 'The spy guessed correctly!' : 'The spy guessed incorrectly!' }}
+              </p>
+              <p class="text-gray-600">
+                The location was: <strong>{{ votingResults.location }}</strong>
+              </p>
+            </div>
+            
+            <div v-else class="space-y-3">
+              <p class="text-gray-600">
+                The spy was: <strong>{{ players.find(p => p.id === votingResults?.spyId)?.name }}</strong>
+              </p>
+              
+              <p class="text-gray-600">
+                The location was: <strong>{{ votingResults.location }}</strong>
+              </p>
+              
+              <p class="text-lg font-bold my-4 text-center" :class="{ 'text-orange-600': votingResults.spyWon, 'text-green-600': !votingResults.spyWon }">
+                {{ votingResults.spyWon ? 'The spy wins!' : 'The spy was caught!' }}
+              </p>
+            </div>
+            
+            <div class="mt-6">
               <Button 
-                @click="endTurn" 
+                v-if="isHost"
+                @click="nextRound" 
                 variant="orange" 
                 size="default" 
-                class="w-full md:w-auto"
+                class="w-full"
                 :disabled="isLoading"
               >
-                {{ isLoading ? 'Ending Turn...' : 'End Turn' }}
+                {{ isLoading ? 'Loading...' : 'Next Round' }}
               </Button>
-            </div>
-            <div v-else class="p-4 bg-gray-50 rounded-lg border border-gray-200 text-center">
-              <p class="text-gray-600">{{ currentPlayer?.name }}'s turn</p>
-            </div>
-            
-            <div class="mt-6 flex flex-col gap-3 items-center">
-              <div v-if="isSpy" class="w-full text-center">
-                <Button 
-                  @click="showSpyGuessModal = true" 
-                  variant="destructive" 
-                  size="default"
-                  class="w-full md:w-auto"
-                >
-                  Make a Guess
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <div v-if="gamePhase === 'voting'" class="space-y-4 text-center">
-            <h3 class="text-lg font-bold text-gray-800">Time to vote!</h3>
-            <p class="mb-3 text-gray-600">Who do you think is the spy?</p>
-            <div v-if="hasVoted" class="p-4 bg-gray-50 rounded-lg border border-gray-200">
-              <p class="text-gray-500">Waiting for other players to vote...</p>
-            </div>
-          </div>
-          
-          <div v-if="gamePhase === 'results'" class="space-y-5">
-            <h3 class="text-xl font-bold text-gray-800 text-center">Round Results</h3>
-            
-            <div v-if="votingResults" class="bg-gray-50 p-5 rounded-lg mt-3 border border-gray-200">
-              <div v-if="votingResults.spyGuess" class="space-y-3">
-                <p class="text-gray-600">
-                  The spy ({{ players.find(p => p.id === votingResults?.spyId)?.name }}) 
-                  guessed: <strong>{{ votingResults.spyGuess }}</strong>
-                </p>
-                <p class="text-lg font-bold my-4 text-center" :class="{ 'text-orange-600': votingResults.spyGuessedCorrectly, 'text-green-600': !votingResults.spyGuessedCorrectly }">
-                  {{ votingResults.spyGuessedCorrectly ? 'The spy guessed correctly and won!' : 'The spy guessed incorrectly and lost!' }}
-                </p>
-              </div>
-              
-              <div v-else class="space-y-3">
-                <p class="text-gray-600">
-                  The spy was: <strong>{{ players.find(p => p.id === votingResults?.spyId)?.name }}</strong>
-                </p>
-                
-                <p class="text-gray-600">
-                  The location was: <strong>{{ votingResults?.location }}</strong>
-                </p>
-                
-                <p class="text-lg font-bold my-4 text-center" :class="{ 'text-orange-600': votingResults?.spyWon, 'text-green-600': !votingResults?.spyWon }">
-                  {{ votingResults?.spyWon ? 'The spy won!' : 'The spy was caught!' }}
-                </p>
-              </div>
-              
-              <div class="flex flex-col md:flex-row gap-3 justify-center mt-5" v-if="isHost">
-                <Button 
-                  @click="returnToLobby" 
-                  variant="orange" 
-                  size="default"
-                  :disabled="isLoading"
-                >
-                  {{ isLoading ? 'Loading...' : 'Return to Lobby' }}
-                </Button>
-              </div>
-              <div v-else class="text-gray-500 italic mt-4 text-center">
-                Waiting for host to return to lobby...
-              </div>
             </div>
           </div>
         </div>
-      </div>
-
-      <!-- Location Display -->
-      <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 mb-6" v-if="!isSpy && gamePhase !== 'results'">
-        <h3 class="text-lg font-bold mb-3 text-gray-800">Location: {{ currentLocation }}</h3>
-        <div class="h-[250px] flex justify-center items-center bg-gray-50 rounded-lg overflow-hidden border border-gray-100">
-          <img 
-            v-if="locationImage" 
-            :src="locationImage" 
-            :alt="currentLocation" 
-            class="max-w-full max-h-full object-contain"
+        
+        <!-- Location Section (for non-spies) -->
+        <div v-if="!isSpy && gamePhase === 'playing'" class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+          <h2 class="text-lg font-bold mb-3 text-gray-800">Location: {{ currentLocation }}</h2>
+          <div class="flex justify-center">
+            <img 
+              v-if="locationImage" 
+              :src="locationImage" 
+              :alt="currentLocation"
+              class="max-h-64 rounded-lg object-cover"
+            />
+          </div>
+        </div>
+        
+        <!-- Possible Locations (for spies) -->
+        <div v-if="isSpy && gamePhase === 'playing'" class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+          <div class="flex justify-between items-center mb-3">
+            <h2 class="text-lg font-bold text-gray-800">Possible Locations</h2>
+            <Button 
+              @click="showSpyGuessModal = true" 
+              variant="destructive" 
+              size="sm"
+              :disabled="isLoading"
+            >
+              Guess Location
+            </Button>
+          </div>
+          <p class="text-sm text-gray-600 mb-3">Click to star locations you think are likely, click again to scratch them out, click a third time to reset.</p>
+          <LocationTiles 
+            :allLocations="allPossibleLocations" 
+            ref="locationTilesRef"
           />
-          <div v-else class="text-gray-500 italic">
-            No image available
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Spy Guess Modal -->
+  <Dialog v-model:open="showSpyGuessModal">
+    <DialogContent class="sm:max-w-md">
+      <DialogHeader>
+        <DialogTitle>Make Your Guess</DialogTitle>
+        <DialogDescription>
+          If you guess the correct location, you win the round!
+        </DialogDescription>
+      </DialogHeader>
+      
+      <div class="py-4">
+        <h3 class="text-lg font-medium mb-3 text-gray-800">Select a location:</h3>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[50vh] overflow-y-auto p-2">
+          <div 
+            v-for="location in allPossibleLocations" 
+            :key="location"
+            class="location-option relative aspect-square rounded-lg overflow-hidden cursor-pointer transition-all hover:ring-2 hover:ring-orange-500"
+            :class="{ 'ring-2 ring-orange-500': spyGuess === location }"
+            @click="selectLocationForGuess(location)"
+          >
+            <img 
+              :src="getLocationImage(location)" 
+              :alt="location"
+              class="w-full h-full object-cover"
+            />
+            <div class="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
+              <span class="text-white text-center font-medium px-2">{{ location }}</span>
+            </div>
           </div>
         </div>
       </div>
       
-      <!-- Location Tiles for Spy -->
-      <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 mb-6" v-if="isSpy && gamePhase !== 'results'">
-        <h3 class="text-lg font-bold mb-3 text-gray-800">Possible Locations</h3>
-        <p class="text-sm text-gray-600 mb-4">Click to star a location, click again to scratch it out, click a third time to reset.</p>
-        <LocationTiles 
-          :allLocations="allPossibleLocations" 
-          ref="locationTilesRef"
-        />
-      </div>
-    </div>
-    
-    <!-- Spy Guess Modal -->
-    <Dialog v-model:open="showSpyGuessModal">
-      <DialogContent class="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>Make Your Guess</DialogTitle>
-          <DialogDescription>
-            If you guess the correct location, you win! If not, you lose.
-          </DialogDescription>
-        </DialogHeader>
-        <div class="py-3">
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Select a location:</label>
-            <div class="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto p-2">
-              <div 
-                v-for="location in sortedLocationsForSelection" 
-                :key="location.name"
-                class="flex items-center p-2 rounded-md cursor-pointer hover:bg-gray-100"
-                :class="{
-                  'bg-orange-50 border border-orange-200': location.status === 'starred',
-                  'opacity-60': location.status === 'scratched'
-                }"
-                @click="selectLocationForGuess(location.name)"
-              >
-                <div class="w-8 h-8 mr-3 flex-shrink-0 bg-gray-200 rounded-md overflow-hidden">
-                  <img 
-                    :src="getLocationImage(location.name)" 
-                    :alt="location.name"
-                    class="w-full h-full object-cover"
-                  />
-                </div>
-                <span :class="{ 'line-through': location.status === 'scratched' }">{{ location.name }}</span>
-                <div v-if="location.status === 'starred'" class="ml-auto text-yellow-400">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                </div>
-              </div>
-            </div>
+      <DialogFooter>
+        <Button @click="showSpyGuessModal = false" variant="outline">Cancel</Button>
+        <Button 
+          @click="submitSpyGuess" 
+          variant="destructive"
+          :disabled="!spyGuess || isLoading"
+        >
+          Submit Guess
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+  
+  <!-- Time's Up Modal -->
+  <Dialog v-model:open="showTimeUpModal">
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle>Time's Up!</DialogTitle>
+        <DialogDescription>
+          The round has ended. Time to vote for who you think is the spy!
+        </DialogDescription>
+      </DialogHeader>
+      
+      <div class="py-4">
+        <p class="text-gray-600">Select a player to vote for:</p>
+        <div class="grid gap-2 mt-4">
+          <div
+            v-for="player in players.filter(p => p.id !== playerId)"
+            :key="player.id"
+            class="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-100 cursor-pointer hover:bg-gray-100"
+            @click="votePlayer(player.id)"
+          >
+            <span>{{ player.name }}</span>
+            <Button variant="destructive" size="sm">Vote</Button>
           </div>
-          <Input 
-            v-model="spyGuess" 
-            type="text" 
-            placeholder="Or type location name" 
-            class="w-full text-base py-5 px-4"
-          />
         </div>
-        <DialogFooter>
-          <Button 
-            @click="submitSpyGuess" 
-            variant="orange"
-            :disabled="!spyGuess || isLoading"
-          >
-            {{ isLoading ? 'Submitting...' : 'Submit Guess' }}
-          </Button>
-          <Button 
-            @click="showSpyGuessModal = false" 
-            variant="outline"
-          >
-            Cancel
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-    
-    <!-- Time's Up Modal -->
-    <Dialog v-model:open="showTimeUpModal">
-      <DialogContent class="sm:max-w-[400px]">
-        <DialogHeader>
-          <DialogTitle>Time's Up!</DialogTitle>
-          <DialogDescription>
-            The round has ended. Time to vote for who you think is the spy!
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button 
-            @click="showTimeUpModal = false" 
-            variant="orange"
-          >
-            OK
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-    
-    <!-- Toast for notifications -->
-    <Toaster />
-  </div>
+      </div>
+    </DialogContent>
+  </Dialog>
+  
+  <Toaster />
 </template>
 
 <script setup lang="ts">
@@ -610,13 +581,8 @@ const getLocationImage = (locationName: string): string => {
 
 // Get all locations
 const allLocations = computed(() => {
-  return gameState.value?.locationPacks?.map(pack => ({
-    ...pack,
-    locations: pack.locations.map(location => ({
-      ...location,
-      status: 'unselected'
-    }))
-  })) || [];
+  // Return a simplified version to avoid type errors
+  return [];
 })
 
 // Get sorted locations for selection
