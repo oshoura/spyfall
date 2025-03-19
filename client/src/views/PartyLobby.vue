@@ -19,13 +19,14 @@
       </div>
 
       <!-- Players List -->
-      <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-gray-200 mb-8">
+      <div class="bg-white rounded-lg shadow p-4 md:p-8 mb-6">
         <h2 class="text-2xl font-bold mb-6 text-gray-800">Players ({{ players.length }})</h2>
-        <div class="grid gap-4">
-          <div v-for="player in players" :key="player.id" 
-               class="flex justify-between items-center p-4 bg-gray-50 rounded-lg border border-gray-100 transition-all hover:shadow-md">
-            <div class="flex items-center space-x-2">
-              <div class="w-10 h-10 rounded-full flex items-center justify-center bg-blue-100 text-blue-700 font-bold">
+        
+        <div class="flex flex-col divide-y divide-gray-200">
+          <div v-for="player in players" :key="player.id"
+               class="flex justify-between items-center py-3">
+            <div class="flex items-center space-x-4">
+              <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
                 {{ player.name.charAt(0).toUpperCase() }}
               </div>
               <div class="flex flex-col">
@@ -51,32 +52,28 @@
                 </div>
               </div>
             </div>
-            <div :class="{ 
-                  'bg-green-500 text-white': player.ready, 
-                  'bg-gray-300 text-gray-700': !player.ready 
-                 }" 
-                 class="px-3 py-1 rounded-full text-sm font-medium transition-colors">
+            <div class="text-xs px-3 py-1 rounded-full" 
+                :class="{
+                  'bg-green-500 text-white': player.ready,
+                  'bg-gray-300 text-gray-700': !player.ready
+                }">
               {{ player.ready ? 'Ready' : 'Not Ready' }}
             </div>
           </div>
         </div>
         
-        <!-- Status Message -->
-        <div class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-100 text-center">
-          <p v-if="players.length < 2" class="text-orange-600 font-medium">
-            Need {{ 2 - players.length }} more player{{ 2 - players.length > 1 ? 's' : '' }} to start the game
-          </p>
-          <p v-else-if="!isReady" class="text-orange-600 font-medium">
-            Please mark yourself as ready to play
+        <div class="mt-4 text-center">
+          <p v-if="players.length < 3" class="text-orange-600 font-medium">
+            Need {{ 3 - players.length }} more player{{ 3 - players.length > 1 ? 's' : '' }} to start the game
           </p>
           <p v-else-if="!allPlayersReady" class="text-blue-600 font-medium">
             Waiting for other players to ready up
           </p>
           <p v-else-if="!isHost" class="text-green-600 font-medium">
-            Waiting for host to start the game
+            All players are ready! Waiting for host to start the game.
           </p>
-          <p v-else class="text-green-600 font-medium">
-            Ready to start the game!
+          <p class="text-gray-600 text-sm mt-2">
+            (Minimum: 3 players, Maximum: 16 players)
           </p>
         </div>
       </div>
@@ -140,7 +137,7 @@
           size="lg"
           class="py-6 px-8 w-full md:w-48"
           :disabled="isLoading"
-          :class="{ 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200': isReady }"
+          :class="isReady ? 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200' : ''"
         >
           <span class="text-lg font-medium">{{ isReady ? 'Ready!' : 'Mark as Ready' }}</span>
         </Button>
@@ -193,8 +190,9 @@ const allPlayersReady = computed(() => {
 })
 const canStartGame = computed(() => {
   return isHost.value && 
-         players.value.length >= 2 &&
-         players.value.every(player => player.ready)
+         isReady.value && 
+         players.value.length >= 3 && 
+         players.value.every(player => player.ready);
 })
 
 // Round time in minutes - default to 2

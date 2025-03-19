@@ -11,13 +11,42 @@ function initializeSocketController(io) {
     gameManager.cleanupInactiveGames();
   }, 3600000);
   
+  // Check game timers every second
+  setInterval(() => {
+    for (const game of gameManager.getActiveGames()) {
+      if (game.state === GameState.PLAYING && game.roundTime > 0) {
+        const timerStatus = game.checkRoundTimer();
+        
+        // Only send timer updates when time is up, not on every check
+        if (timerStatus.isTimeUp) {
+          // Send results to each player
+          for (const playerId of game.players.keys()) {
+            const playerState = game.getStateForPlayer(playerId);
+            io.to(playerId).emit('round-ended', playerState);
+          }
+          
+          io.to(game.id).emit('time-up');
+        }
+      }
+    }
+  }, 1000);
+  
   // Handle socket connections
   io.on('connection', (socket) => {
     console.log(`User connected: ${socket.id}`);
     
     // Create a new game
     socket.on('create-game', ({ playerName }, callback) => {
-      const { game, player } = gameManager.createGame(socket.id, playerName);
+      const result = gameManager.createGame(socket.id, playerName);
+      
+      if (result.error) {
+        return callback({
+          success: false,
+          error: result.error
+        });
+      }
+      
+      const { game, player } = result;
       
       // Join the socket to the game room
       socket.join(game.id);
@@ -34,10 +63,10 @@ function initializeSocketController(io) {
     socket.on('join-game', ({ gameId, playerName }, callback) => {
       const result = gameManager.joinGame(gameId, socket.id, playerName);
       
-      if (!result) {
+      if (!result.success) {
         return callback({
           success: false,
-          error: 'Game not found or cannot be joined'
+          error: result.error
         });
       }
       

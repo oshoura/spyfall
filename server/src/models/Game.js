@@ -39,21 +39,27 @@ class Game {
     this.votes = new Map(); // Map of player ID to votes received
     this.roundStartTime = null; // Timestamp when the round started
     this.roundEndTime = null; // Timestamp when the round ended
+    this.minPlayers = 3; // Minimum players required to start
+    this.maxPlayers = 16; // Maximum players allowed
   }
 
   /**
    * Add a player to the game
    * @param {Player} player - Player to add
-   * @returns {boolean} - Whether the player was added successfully
+   * @returns {boolean|object} - Whether the player was added successfully or an error message
    */
   addPlayer(player) {
     if (this.state !== GameState.LOBBY) {
-      return false;
+      return { success: false, error: 'Cannot join a game that has already started' };
+    }
+
+    if (this.players.size >= this.maxPlayers) {
+      return { success: false, error: `Game is full (maximum ${this.maxPlayers} players)` };
     }
     
     this.players.set(player.id, player);
     this.lastUpdateTime = Date.now();
-    return true;
+    return { success: true };
   }
 
   /**
@@ -92,7 +98,7 @@ class Game {
    * @returns {boolean} - Whether all players are ready
    */
   areAllPlayersReady() {
-    if (this.players.size < 2) {
+    if (this.players.size < this.minPlayers) {
       return false;
     }
     
@@ -395,11 +401,38 @@ class Game {
     
     // Check if time is up
     if (this.timeRemaining === 0) {
-      this.state = GameState.SPY_GUESSING;
-      this.lastUpdateTime = now;
+      this.endRoundEarly('time-up');
     }
     
     return this.timeRemaining;
+  }
+
+  /**
+   * Check the round timer and return current status
+   * @returns {Object} - Timer information including if time is up
+   */
+  checkRoundTimer() {
+    if (this.state !== GameState.PLAYING || this.roundTime <= 0) {
+      return { 
+        isTimeUp: false
+      };
+    }
+    
+    const now = Date.now();
+    const elapsedSeconds = Math.floor((now - this.roundStartTime) / 1000);
+    this.timeRemaining = Math.max(0, this.roundTime - elapsedSeconds);
+    
+    // Check if time is up
+    if (this.timeRemaining === 0) {
+      this.endRoundEarly('time-up');
+      return {
+        isTimeUp: true
+      };
+    }
+    
+    return {
+      isTimeUp: false
+    };
   }
 
   /**

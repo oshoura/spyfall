@@ -47,7 +47,7 @@ export interface LocationPack {
 }
 
 class SocketService {
-  private socket: Socket | null = null;
+  public socket: Socket | null = null;
   private serverUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
   
   // Reactive state

@@ -11,7 +11,7 @@
           <div class="text-xl font-bold text-gray-800">Round {{ gameState?.round || 1 }}</div>
           
           <!-- Timer -->
-          <div v-if="gameState?.roundTime && gameState.roundTime > 0" class="flex items-center gap-2 text-lg font-medium" :class="{ 'text-red-600': timeRemaining < 120 }">
+          <div v-if="gameState?.roundTime && gameState.roundTime > 0" class="flex items-center gap-2 text-lg font-medium" :class="timerStyle">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-timer"><path d="M10 2h4"></path><path d="M12 14v-4"></path><path d="M4 13a8 8 0 0 1 8-7 8 8 0 1 1-5.3 14L4 17.6"></path><path d="M9 17H4v5"></path></svg>
             <span>{{ formatTime(timeRemaining) }}</span>
           </div>
@@ -42,8 +42,8 @@
             <p class="text-sm text-gray-600 mb-3">Click to mark players as suspicious. Click the vote button next to a player to vote for them as the spy.</p>
             <PlayerMarker 
               :gamePlayers="players" 
-              :currentPlayerId="currentPlayerId" 
-              :hostId="hostId"
+              :currentPlayerId="currentPlayerId || ''" 
+              :hostId="gameState?.hostId || ''"
               :showVoteButton="true"
               :showVotes="showVoteCounts"
               @vote="votePlayer"
@@ -74,7 +74,7 @@
                   <div class="flex items-center">
                     <span class="font-medium">{{ player.name }}</span>
                     <span v-if="player.id === currentPlayerId" class="ml-2 text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">You</span>
-                    <span v-if="player.id === hostId" class="ml-2 text-xs bg-orange-500 text-white px-2 py-0.5 rounded-full">Host</span>
+                    <span v-if="player.id === gameState?.hostId" class="ml-2 text-xs bg-orange-500 text-white px-2 py-0.5 rounded-full">Host</span>
                     <span v-if="currentPlayer?.votedFor === player.id" class="ml-2 text-xs bg-purple-500 text-white px-2 py-0.5 rounded-full">Your Vote</span>
                   </div>
                   <div class="flex mt-1 space-x-2">
@@ -99,7 +99,7 @@
                 @click="votePlayer(player.id)" 
                 variant="destructive" 
                 size="sm"
-                :class="{ 'bg-purple-600 hover:bg-purple-700': currentPlayer?.votedFor === player.id }"
+                :class="currentPlayer?.votedFor === player.id ? 'bg-purple-600 hover:bg-purple-700' : ''"
               >
                 {{ currentPlayer?.votedFor === player.id ? 'Change Vote' : 'Vote' }}
               </Button>
@@ -425,6 +425,16 @@ const startTimer = (durationInMinutes: number) => {
   timerInterval.value = window.setInterval(() => {
     if (timeRemaining.value > 0) {
       timeRemaining.value--;
+      
+      // Check if time is getting low (less than 30 seconds)
+      if (timeRemaining.value === 30) {
+        timeIsLow.value = true;
+        toast({
+          title: "Time is running out!",
+          description: "Less than 30 seconds remaining",
+          variant: "destructive"
+        });
+      }
     } else {
       // Time's up
       if (timerInterval.value) {
@@ -432,12 +442,8 @@ const startTimer = (durationInMinutes: number) => {
         timerInterval.value = undefined;
       }
       
-      // Toast notification for time's up
-      toast({
-        title: "Time's up!",
-        description: "The round has ended",
-        duration: 3000,
-      });
+      // Note: We don't need to do anything here as the server will send a time-up event
+      // when the actual time is up, which may be slightly different from client time
     }
   }, 1000);
 };
@@ -519,15 +525,31 @@ onMounted(() => {
     // Start the timer with the remaining time
     timeRemaining.value = remainingSeconds;
     
+    // If remaining time is less than 30 seconds, set timeIsLow
+    if (remainingSeconds <= 30 && remainingSeconds > 0) {
+      timeIsLow.value = true;
+    }
+    
     timerInterval.value = setInterval(() => {
       if (timeRemaining.value > 0) {
         timeRemaining.value--;
+        
+        // Check if time is getting low (at exactly 30 seconds)
+        if (timeRemaining.value === 30) {
+          timeIsLow.value = true;
+          toast({
+            title: "Time is running out!",
+            description: "Less than 30 seconds remaining",
+            variant: "destructive"
+          });
+        }
       } else {
-        // Time's up
+        // Time's up (client-side)
         if (timerInterval.value) {
           clearInterval(timerInterval.value);
           timerInterval.value = undefined;
         }
+        // Note: We'll still wait for the server to confirm the round is over
       }
     }, 1000);
   }
@@ -535,12 +557,33 @@ onMounted(() => {
   else if (gameState.value.state === 'playing' && gameState.value.roundTime !== undefined) {
     startTimer(gameState.value.roundTime);
   }
+  
+  // Listen for time-up events from the server
+  if (socketService.socket) {
+    socketService.socket.on('time-up', () => {
+      // Clear any local timer
+      if (timerInterval.value) {
+        clearInterval(timerInterval.value);
+        timerInterval.value = undefined;
+      }
+      
+      toast({
+        title: "Time's up!",
+        description: "The round has ended",
+        variant: "destructive"
+      });
+    });
+  }
 })
 
-// Clean up the timer when the component is unmounted
 onUnmounted(() => {
   if (timerInterval.value) {
     clearInterval(timerInterval.value);
+  }
+  
+  // Remove event listeners
+  if (socketService.socket) {
+    socketService.socket.off('time-up');
   }
 })
 
@@ -755,4 +798,13 @@ const handleImageError = (event: Event) => {
   // Set a placeholder image
   target.src = '/images/locations/placeholder.png';
 };
+
+// Update the computed properties section to add timer styling
+const timerWarning = computed(() => timeIsLow.value)
+const timerStyle = computed(() => {
+  return timerWarning.value ? 'text-red-500 font-bold' : ''
+})
+
+// Add a new ref for tracking low time status
+const timeIsLow = ref(false)
 </script> 

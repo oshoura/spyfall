@@ -20,7 +20,11 @@ class GameManager {
     const game = new Game(hostId);
     const host = new Player(hostId, hostName);
     
-    game.addPlayer(host);
+    const result = game.addPlayer(host);
+    if (!result.success) {
+      return { error: result.error };
+    }
+    
     this.games.set(game.id, game);
     this.playerGameMap.set(hostId, game.id);
     
@@ -32,21 +36,23 @@ class GameManager {
    * @param {string} gameId - ID of the game to join
    * @param {string} playerId - Socket ID of the player
    * @param {string} playerName - Name of the player
-   * @returns {Object|null} - Game and player if successful, null otherwise
+   * @returns {Object|null} - Game and player if successful, or error message
    */
   joinGame(gameId, playerId, playerName) {
     const game = this.games.get(gameId);
     if (!game) {
-      return null;
+      return { success: false, error: 'Game not found' };
     }
     
     const player = new Player(playerId, playerName);
-    if (!game.addPlayer(player)) {
-      return null;
+    const result = game.addPlayer(player);
+    
+    if (!result.success) {
+      return { success: false, error: result.error };
     }
     
     this.playerGameMap.set(playerId, gameId);
-    return { game, player };
+    return { success: true, game, player };
   }
 
   /**
@@ -101,6 +107,14 @@ class GameManager {
     for (const game of this.games.values()) {
       game.updateTimer();
     }
+  }
+
+  /**
+   * Get all active games
+   * @returns {Game[]} - Array of active games
+   */
+  getActiveGames() {
+    return Array.from(this.games.values());
   }
 
   /**
