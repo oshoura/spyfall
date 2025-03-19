@@ -271,6 +271,20 @@ class Game {
       return false;
     }
     
+    // If player has already voted for someone else, remove that vote first
+    if (voter.hasVoted && voter.votedFor !== targetId) {
+      const previousTargetId = voter.votedFor;
+      if (previousTargetId && this.votes.has(previousTargetId)) {
+        // Decrement the vote count for the previous target
+        const previousVotes = this.votes.get(previousTargetId);
+        if (previousVotes > 1) {
+          this.votes.set(previousTargetId, previousVotes - 1);
+        } else {
+          this.votes.delete(previousTargetId);
+        }
+      }
+    }
+    
     // Record the vote
     voter.vote(targetId);
     
@@ -441,10 +455,16 @@ class Game {
   returnToLobby() {
     this.state = GameState.LOBBY;
     
-    // Reset player readiness
+    // Reset player readiness and voting status
     for (const player of this.players.values()) {
       player.ready = false;
+      player.hasVoted = false;
+      player.votedFor = null;
     }
+    
+    // Clear votes
+    this.votes.clear();
+    this.voteCallers.clear();
     
     this.lastUpdateTime = Date.now();
   }

@@ -124,12 +124,20 @@ class SocketService {
     });
     
     // Player voted
-    this.socket.on('player-voted', ({ playerId, targetPlayerId }) => {
+    this.socket.on('player-voted', ({ playerId, targetPlayerId, voteCounts }) => {
       if (this.gameState.value) {
-        const player = this.gameState.value.players.find(p => p.id === playerId);
-        if (player) {
-          player.hasVoted = true;
-          player.votedFor = targetPlayerId;
+        // Update the player who voted
+        const voter = this.gameState.value.players.find(p => p.id === playerId);
+        if (voter) {
+          voter.hasVoted = true;
+          voter.votedFor = targetPlayerId;
+        }
+        
+        // Update vote counts for all players
+        if (voteCounts) {
+          this.gameState.value.players.forEach(player => {
+            player.votesReceived = voteCounts[player.id] || 0;
+          });
         }
       }
     });
@@ -484,6 +492,26 @@ class SocketService {
           resolve({ locations: response.locations });
         } else {
           reject(new Error(response.error || 'Failed to get locations'));
+        }
+      });
+    });
+  }
+  
+  /**
+   * End the current round early (host only)
+   */
+  public endRoundEarly(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('Socket not initialized'));
+        return;
+      }
+      
+      this.socket.emit('end-round-early', {}, (response: any) => {
+        if (response.success) {
+          resolve();
+        } else {
+          reject(new Error(response.error || 'Failed to end round early'));
         }
       });
     });

@@ -339,7 +339,8 @@ function initializeSocketController(io) {
       // Notify all players about the vote
       io.to(game.id).emit('player-voted', {
         playerId: socket.id,
-        targetPlayerId: targetPlayerId
+        targetPlayerId: targetPlayerId,
+        voteCounts: Object.fromEntries(game.votes)
       });
       
       // If all non-spy players have voted, transition to results
@@ -367,11 +368,12 @@ function initializeSocketController(io) {
         });
       }
       
-      // Only the host can return to lobby
-      if (socket.id !== game.hostId) {
+      // Allow any player to return to lobby if the game is in RESULTS state,
+      // but only the host can do it at other times
+      if (socket.id !== game.hostId && game.state !== GameState.RESULTS) {
         return callback({
           success: false,
-          error: 'Only the host can return the game to lobby'
+          error: 'Only the host can return the game to lobby before the round ends'
         });
       }
       
@@ -443,6 +445,47 @@ function initializeSocketController(io) {
       callback({
         success: true,
         locations
+      });
+    });
+    
+    // End the round early (host only)
+    socket.on('end-round-early', (_, callback) => {
+      const game = gameManager.getGameByPlayerId(socket.id);
+      
+      if (!game) {
+        return callback({
+          success: false,
+          error: 'Game not found'
+        });
+      }
+      
+      // Only the host can end the round early
+      if (socket.id !== game.hostId) {
+        return callback({
+          success: false,
+          error: 'Only the host can end the round early'
+        });
+      }
+      
+      // Only allowed in playing state
+      if (game.state !== GameState.PLAYING) {
+        return callback({
+          success: false,
+          error: 'Can only end the round when game is in progress'
+        });
+      }
+      
+      // End the round early
+      game.endRoundEarly('host-ended');
+      
+      // Send results to each player
+      for (const playerId of game.players.keys()) {
+        const playerState = game.getStateForPlayer(playerId);
+        io.to(playerId).emit('round-ended', playerState);
+      }
+      
+      callback({
+        success: true
       });
     });
     

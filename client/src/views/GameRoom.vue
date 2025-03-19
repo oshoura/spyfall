@@ -8,7 +8,18 @@
       <!-- Game Header -->
       <div class="bg-white p-4 md:p-5 rounded-xl shadow-sm border border-gray-200 mb-6">
         <div class="flex flex-col justify-between items-center gap-3">
-          <div class="text-xl font-bold text-gray-800">Round {{ gameState?.round || 1 }}</div>
+          <div class="flex items-center justify-between w-full">
+            <div class="text-xl font-bold text-gray-800">Round {{ gameState?.round || 1 }}</div>
+            <Button 
+              v-if="isHost && gamePhase === 'playing'" 
+              @click="endRoundEarly" 
+              variant="destructive" 
+              size="sm"
+              class="ml-2"
+            >
+              End Round
+            </Button>
+          </div>
           
           <!-- Timer -->
           <div v-if="gameState?.roundTime && gameState.roundTime > 0" class="flex items-center gap-2 text-lg font-medium" :class="timerStyle">
@@ -77,18 +88,10 @@
                     <span v-if="player.id === gameState?.hostId" class="ml-2 text-xs bg-orange-500 text-white px-2 py-0.5 rounded-full">Host</span>
                     <span v-if="currentPlayer?.votedFor === player.id" class="ml-2 text-xs bg-purple-500 text-white px-2 py-0.5 rounded-full">Your Vote</span>
                   </div>
-                  <div class="flex mt-1 space-x-2">
-                    <span v-if="player.hasVoted" class="text-xs text-gray-500 flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                      </svg>
-                      Voted
-                    </span>
-                    <span v-if="showVoteCounts && player.votesReceived && player.votesReceived > 0" 
-                          class="text-xs text-purple-600 flex items-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" />
-                      </svg>
+                  <!-- Show vote count more prominently during voting or when votes are present -->
+                  <div v-if="(gamePhase === 'voting' || gamePhase === 'results') && player.votesReceived" 
+                       class="mt-1 flex items-center">
+                    <span class="bg-purple-100 text-purple-800 text-xs font-medium px-2 py-0.5 rounded">
                       {{ player.votesReceived }} vote{{ player.votesReceived > 1 ? 's' : '' }}
                     </span>
                   </div>
@@ -212,6 +215,13 @@
           </p>
         </div>
         
+        <!-- Host ended round early scenario -->
+        <div v-else-if="votingResults.reason === 'host-ended'" class="p-4 rounded-lg bg-blue-50 border border-blue-100">
+          <p class="text-blue-800">
+            The host ended the round early. The spy wins by default.
+          </p>
+        </div>
+        
         <!-- Spy guess scenario -->
         <div v-else-if="votingResults.spyGuess" class="p-4 rounded-lg" :class="votingResults.spyGuessedCorrectly ? 'bg-orange-50 border border-orange-100' : 'bg-green-50 border border-green-100'">
           <div class="text-sm mb-2" :class="votingResults.spyGuessedCorrectly ? 'text-orange-800' : 'text-green-800'">
@@ -270,11 +280,8 @@
       </div>
       
       <DialogFooter>
-        <Button v-if="isHost" @click="returnToLobby" variant="orange" :disabled="isLoading">
+        <Button @click="returnToLobby" variant="orange" :disabled="isLoading">
           Return to Lobby
-        </Button>
-        <Button v-else variant="outline" :disabled="isLoading">
-          Waiting for host...
         </Button>
       </DialogFooter>
     </DialogContent>
@@ -663,8 +670,6 @@ const votePlayer = async (targetId: string) => {
 
 // Return to lobby
 const returnToLobby = async () => {
-  if (!isHost.value) return
-  
   try {
     isLoading.value = true
     errorMessage.value = ''
@@ -807,4 +812,19 @@ const timerStyle = computed(() => {
 
 // Add a new ref for tracking low time status
 const timeIsLow = ref(false)
+
+// End round early
+const endRoundEarly = async () => {
+  try {
+    isLoading.value = true
+    errorMessage.value = ''
+    
+    await socketService.endRoundEarly()
+  } catch (error) {
+    console.error('Error ending round early:', error)
+    errorMessage.value = error instanceof Error ? error.message : 'Failed to end round early'
+  } finally {
+    isLoading.value = false
+  }
+}
 </script> 

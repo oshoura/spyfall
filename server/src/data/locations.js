@@ -1,23 +1,74 @@
 /**
- * Game locations organized into packs
+ * Game locations organized into multiple packs.
+ *
+ * Changes made:
+ * - Added two Basic packs (basic1 and basic2) based on your provided list.
+ * - Retained and integrated the earlier expanded packs: advanced, tourism, extreme, fantasy, and sci_fi.
  */
 const locationPacks = {
-  basic: {
-    name: "Basic Locations",
-    description: "Common everyday locations",
+  basic1: {
+    name: "Basic Pack 1",
+    description: "Straightforward, everyday locations for classic gameplay.",
     locations: [
-      "School",
-      "Hospital",
-      "Beach",
-      "Restaurant",
+      "Airplane",
       "Bank",
-      "Supermarket",
-      "Movie Theater",
-      "Gym",
+      "Beach",
+      "Broadway Theater",
+      "Casino",
+      "Cathedral",
+      "Circus Tent",
+      "Corporate Party",
+      "Crusader Army",
+      "Day Spa",
+      "Embassy",
+      "Hospital",
+      "Hotel",
+      "Military Base",
+      "Movie Studio",
+      "Ocean Liner",
+      "Passenger Train",
+      "Pirate Ship",
+      "Polar Station",
+      "Police Station",
+      "Restaurant",
+      "School",
+      "Service Station",
+      "Space Station",
+      "Submarine",
+      "Supermarket"
+    ]
+  },
+  basic2: {
+    name: "Basic Pack 2",
+    description: "A mix of public, entertainment, and unique settings for varied gameplay.",
+    locations: [
+      "University",
+      "Spyfall 2",
+      "Amusement Park",
+      "Art Museum",
+      "Candy Factory",
+      "Cat Show",
+      "Cemetery",
+      "Coal Mine",
+      "Construction Site",
+      "Gaming Convention",
+      "Gas Station",
+      "Harbor Docks",
+      "Ice Hockey Stadium",
+      "Jail",
+      "Jazz Club",
       "Library",
-      "Park",
-      "Shopping Mall",
-      "Hotel"
+      "Night Club",
+      "Race Track",
+      "Retirement Home",
+      "Rock Concert",
+      "Sightseeing Bus",
+      "Stadium",
+      "Subway",
+      "The U.N.",
+      "Vineyard",
+      "Wedding",
+      "Zoo"
     ]
   },
   advanced: {
@@ -35,7 +86,12 @@ const locationPacks = {
       "Ski Resort",
       "Cruise Ship",
       "Amusement Park",
-      "Zoo"
+      "Zoo",
+      "Underwater Research Lab",
+      "Deserted Island Resort",
+      "Underground Bunker",
+      "Space Elevator",
+      "High-Speed Train Depot"
     ]
   },
   tourism: {
@@ -53,9 +109,70 @@ const locationPacks = {
       "Stonehenge",
       "Sydney Opera House",
       "Niagara Falls",
-      "Mount Everest Base Camp"
+      "Mount Everest Base Camp",
+      "Louvre Museum",
+      "Big Ben",
+      "Burj Khalifa",
+      "Times Square",
+      "Red Square"
+    ]
+  },
+  extreme: {
+    name: "Extreme Locations",
+    description: "High-risk, dangerous, or unconventional spots",
+    locations: [
+      "Volcano Observatory",
+      "Antarctic Research Station",
+      "Chernobyl Exclusion Zone",
+      "Arctic Base",
+      "Deep Sea Trench",
+      "Active Volcano",
+      "Edge of a Black Hole Observatory",
+      "Lightning Storm Tower",
+      "Desert Wasteland Outpost",
+      "Extreme Mountain Summit"
+    ]
+  },
+  fantasy: {
+    name: "Fantasy & Fictional Locations",
+    description: "Mythical, magical, and fictional worlds",
+    locations: [
+      "Hogwarts School",
+      "Mordor",
+      "Narnia",
+      "Westeros",
+      "Middle-Earth",
+      "Atlantis",
+      "Pandora (Avatar)",
+      "Camelot",
+      "Neverland",
+      "Asgard",
+      "The Shire",
+      "Emerald City",
+      "Oz",
+      "Rivendell",
+      "Lothlórien",
+      "Wonderland"
+    ]
+  },
+  sci_fi: {
+    name: "Sci-Fi & Futuristic Locations",
+    description: "Advanced, futuristic, and high-tech environments",
+    locations: [
+      "Mars Colony",
+      "Moon Base",
+      "Orbital Station",
+      "Intergalactic Spaceport",
+      "Quantum Research Lab",
+      "Cyber City",
+      "Virtual Reality Realm",
+      "Terraforming Facility",
+      "Futuristic Megacity",
+      "Time Travel Hub",
+      "Galactic Senate Chamber",
+      "Stellar Research Outpost"
     ]
   }
 };
 
-module.exports = locationPacks; 
+module.exports = locationPacks;

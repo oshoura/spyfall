@@ -24,7 +24,7 @@ function ensureDirectoryExists(directory) {
 }
 
 function generatePrompt(location, packId) {
-  return `A cartoon style illustration of a ${location}, shown from the outside.`;
+  return `An obvious cartoon style illustration of a ${location}`;
 }
 
 async function generateImage(prompt, outputPath) {
