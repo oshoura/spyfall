@@ -1,0 +1,529 @@
+const locationPacks = require('../data/locations');
+const { generateCode } = require('../utils/codeGenerator');
+
+/**
+ * Game states
+ * @enum {string}
+ */
+const GameState = {
+  LOBBY: 'lobby',
+  PLAYING: 'playing',
+  SPY_GUESSING: 'spy_guessing',
+  VOTING: 'voting',
+  RESULTS: 'results'
+};
+
+/**
+ * Game class to manage a Spyfall game
+ */
+class Game {
+  /**
+   * Create a new game
+   * @param {string} hostId - Socket ID of the host player
+   */
+  constructor(hostId) {
+    this.id = generateCode();
+    this.hostId = hostId;
+    this.players = new Map(); // Map of player ID to Player object
+    this.state = GameState.LOBBY;
+    this.roundTime = 2 * 60; // 2 minutes in seconds
+    this.timeRemaining = this.roundTime;
+    this.currentLocation = null;
+    this.currentRound = 0;
+    this.maxRounds = 5;
+    this.usedLocations = new Set();
+    this.lastUpdateTime = Date.now();
+    this.selectedLocationPacks = ['basic']; // Default to basic pack
+    this.voteCallers = new Set(); // Players who called for a vote
+    this.spyGuess = null; // The spy's guess for the location
+    this.votes = new Map(); // Map of player ID to votes received
+    this.roundStartTime = null; // Timestamp when the round started
+    this.roundEndTime = null; // Timestamp when the round ended
+  }
+
+  /**
+   * Add a player to the game
+   * @param {Player} player - Player to add
+   * @returns {boolean} - Whether the player was added successfully
+   */
+  addPlayer(player) {
+    if (this.state !== GameState.LOBBY) {
+      return false;
+    }
+    
+    this.players.set(player.id, player);
+    this.lastUpdateTime = Date.now();
+    return true;
+  }
+
+  /**
+   * Remove a player from the game
+   * @param {string} playerId - ID of the player to remove
+   * @returns {boolean} - Whether the player was removed successfully
+   */
+  removePlayer(playerId) {
+    if (!this.players.has(playerId)) {
+      return false;
+    }
+    
+    this.players.delete(playerId);
+    
+    // If the host leaves, assign a new host
+    if (playerId === this.hostId && this.players.size > 0) {
+      this.hostId = this.players.keys().next().value;
+    }
+    
+    // If a vote caller leaves, remove them from vote callers
+    if (this.voteCallers.has(playerId)) {
+      this.voteCallers.delete(playerId);
+    }
+    
+    // If player has votes, remove them
+    this.votes.delete(playerId);
+    
+    // Update timestamp
+    this.lastUpdateTime = Date.now();
+    
+    return true;
+  }
+
+  /**
+   * Check if all players are ready
+   * @returns {boolean} - Whether all players are ready
+   */
+  areAllPlayersReady() {
+    if (this.players.size < 2) {
+      return false;
+    }
+    
+    for (const player of this.players.values()) {
+      if (!player.ready) {
+        return false;
+      }
+    }
+    
+    return true;
+  }
+
+  /**
+   * Set the location packs to use for the game
+   * @param {string[]} packIds - Array of pack IDs
+   */
+  setLocationPacks(packIds) {
+    if (packIds && packIds.length > 0) {
+      // Filter to only include valid pack IDs
+      this.selectedLocationPacks = packIds.filter(id => locationPacks[id]);
+      
+      // If no valid packs, default to basic
+      if (this.selectedLocationPacks.length === 0) {
+        this.selectedLocationPacks = ['basic'];
+      }
+    }
+    
+    this.lastUpdateTime = Date.now();
+  }
+
+  /**
+   * Get all available locations from selected packs
+   * @returns {string[]} - Array of location names
+   */
+  getAvailableLocations() {
+    let allLocations = [];
+    
+    for (const packId of this.selectedLocationPacks) {
+      if (locationPacks[packId]) {
+        allLocations = allLocations.concat(locationPacks[packId].locations);
+      }
+    }
+    
+    return allLocations;
+  }
+
+  /**
+   * Get information about the selected location packs
+   * @returns {Object[]} - Array of location pack info
+   */
+  getLocationPacks() {
+    const availablePacks = Object.keys(locationPacks);
+    
+    return availablePacks.map(packId => {
+      const pack = locationPacks[packId];
+      return {
+        id: packId,
+        name: pack.name,
+        description: pack.description,
+        locationCount: pack.locations.length,
+        selected: this.selectedLocationPacks.includes(packId)
+      };
+    });
+  }
+
+  /**
+   * Start a new round
+   * @returns {Object} - Round information
+   */
+  startNewRound() {
+    this.currentRound++;
+    this.state = GameState.PLAYING;
+    this.voteCallers.clear();
+    this.spyGuess = null;
+    this.votes.clear();
+    this.lastUpdateTime = Date.now();
+    this.roundStartTime = Date.now();
+    this.roundEndTime = null;
+    
+    // Reset player states
+    for (const player of this.players.values()) {
+      player.resetForNewRound();
+    }
+    
+    // Get all available locations from selected packs
+    const allLocations = this.getAvailableLocations();
+    
+    // Filter out used locations
+    let availableLocations = allLocations.filter(loc => !this.usedLocations.has(loc));
+    
+    // If all locations have been used, reset
+    if (availableLocations.length === 0) {
+      this.usedLocations.clear();
+      availableLocations = allLocations;
+    }
+    
+    // Select a random location
+    const locationIndex = Math.floor(Math.random() * availableLocations.length);
+    this.currentLocation = availableLocations[locationIndex];
+    this.usedLocations.add(this.currentLocation);
+    
+    // Assign spy role
+    const playerIds = Array.from(this.players.keys());
+    const spyIndex = Math.floor(Math.random() * playerIds.length);
+    
+    playerIds.forEach((playerId, index) => {
+      const player = this.players.get(playerId);
+      player.isSpy = (index === spyIndex);
+    });
+    
+    return {
+      round: this.currentRound,
+      location: this.currentLocation
+    };
+  }
+
+  /**
+   * Call for a vote to find the spy
+   * @param {string} playerId - ID of the player calling for a vote
+   * @returns {Object} - Vote call information
+   */
+  callForVote(playerId) {
+    if (this.state !== GameState.PLAYING) {
+      return { success: false, error: 'Cannot call for vote in current state' };
+    }
+    
+    const player = this.players.get(playerId);
+    if (!player) {
+      return { success: false, error: 'Player not found' };
+    }
+    
+    if (player.isSpy) {
+      return { success: false, error: 'Spy cannot call for a vote' };
+    }
+    
+    // Add player to vote callers
+    this.voteCallers.add(playerId);
+    
+    // Check if we have enough vote callers
+    const shouldStartVoting = this.voteCallers.size >= 2;
+    
+    if (shouldStartVoting) {
+      this.state = GameState.VOTING;
+      this.lastUpdateTime = Date.now();
+    }
+    
+    return { 
+      success: true, 
+      voteCallers: Array.from(this.voteCallers),
+      votingStarted: shouldStartVoting
+    };
+  }
+
+  /**
+   * Record a vote from a player
+   * @param {string} voterId - ID of the player voting
+   * @param {string} targetId - ID of the player being voted for
+   * @returns {boolean} - Whether the vote was recorded successfully
+   */
+  recordVote(voterId, targetId) {
+    // Allow voting during playing phase or voting phase
+    if (this.state !== GameState.PLAYING && this.state !== GameState.VOTING) {
+      return false;
+    }
+    
+    const voter = this.players.get(voterId);
+    const target = this.players.get(targetId);
+    
+    if (!voter || !target) {
+      return false;
+    }
+    
+    // Record the vote
+    voter.vote(targetId);
+    
+    // Count this vote for the target
+    if (!this.votes.has(targetId)) {
+      this.votes.set(targetId, 0);
+    }
+    this.votes.set(targetId, this.votes.get(targetId) + 1);
+    
+    // If all players have voted, end the voting phase
+    let allVoted = true;
+    
+    for (const player of this.players.values()) {
+      if (!player.hasVoted) {
+        allVoted = false;
+        break;
+      }
+    }
+    
+    if (allVoted && this.players.size > 1) {
+      this.endVoting();
+    }
+    
+    this.lastUpdateTime = Date.now();
+    
+    return true;
+  }
+
+  /**
+   * End the voting phase and determine results
+   */
+  endVoting() {
+    this.state = GameState.RESULTS;
+    this.roundEndTime = Date.now();
+    
+    // Determine the most voted player
+    let mostVotedId = null;
+    let maxVotes = -1;
+    
+    for (const [playerId, voteCount] of this.votes.entries()) {
+      if (voteCount > maxVotes) {
+        maxVotes = voteCount;
+        mostVotedId = playerId;
+      }
+    }
+    
+    // Find the spy
+    let spyId = null;
+    for (const [playerId, player] of this.players.entries()) {
+      if (player.isSpy) {
+        spyId = playerId;
+        break;
+      }
+    }
+    
+    // Determine if the spy won
+    const spyWon = mostVotedId !== spyId;
+    
+    // Store results for getStateForPlayer to use
+    this.results = {
+      votes: this.votes,
+      spyId,
+      mostVotedId,
+      spyWon,
+      location: this.currentLocation,
+      spyGuess: this.spyGuess
+    };
+  }
+
+  /**
+   * Spy makes a guess for the location
+   * @param {string} playerId - ID of the player (spy) making the guess
+   * @param {string} locationGuess - The location guess
+   * @returns {Object} - Guess result
+   */
+  makeSpyGuess(playerId, locationGuess) {
+    if (this.state !== GameState.PLAYING && this.state !== GameState.SPY_GUESSING) {
+      return { success: false, error: 'Cannot make a guess in current state' };
+    }
+    
+    const player = this.players.get(playerId);
+    if (!player) {
+      return { success: false, error: 'Player not found' };
+    }
+    
+    if (!player.isSpy) {
+      return { success: false, error: 'Only the spy can make a location guess' };
+    }
+    
+    this.state = GameState.RESULTS;
+    this.spyGuess = locationGuess;
+    this.roundEndTime = Date.now();
+    
+    const isCorrect = locationGuess.toLowerCase() === this.currentLocation.toLowerCase();
+    
+    // Store results
+    this.results = {
+      votes: this.votes,
+      spyId: playerId,
+      mostVotedId: null,
+      spyWon: isCorrect,
+      location: this.currentLocation,
+      spyGuess: locationGuess,
+      spyGuessedCorrectly: isCorrect
+    };
+    
+    this.lastUpdateTime = Date.now();
+    
+    return { 
+      success: true, 
+      isCorrect,
+      actualLocation: this.currentLocation
+    };
+  }
+
+  /**
+   * Update the game timer
+   * @returns {number} - Updated time remaining
+   */
+  updateTimer() {
+    if (this.state !== GameState.PLAYING || this.roundTime <= 0) {
+      return this.timeRemaining;
+    }
+    
+    const now = Date.now();
+    const elapsedSeconds = Math.floor((now - this.roundStartTime) / 1000);
+    this.timeRemaining = Math.max(0, this.roundTime - elapsedSeconds);
+    
+    // Check if time is up
+    if (this.timeRemaining === 0) {
+      this.state = GameState.SPY_GUESSING;
+      this.lastUpdateTime = now;
+    }
+    
+    return this.timeRemaining;
+  }
+
+  /**
+   * Return to lobby after a round
+   */
+  returnToLobby() {
+    this.state = GameState.LOBBY;
+    
+    // Reset player readiness
+    for (const player of this.players.values()) {
+      player.ready = false;
+    }
+    
+    this.lastUpdateTime = Date.now();
+  }
+
+  /**
+   * Get the ID of the spy
+   * @returns {string|null} - ID of the spy
+   */
+  getSpyId() {
+    for (const [playerId, player] of this.players.entries()) {
+      if (player.isSpy) {
+        return playerId;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * End the round early due to special circumstances
+   * @param {string} reason - Reason for ending the round early (e.g., 'spy-left', 'time-up')
+   */
+  endRoundEarly(reason) {
+    this.state = GameState.RESULTS;
+    this.roundEndTime = Date.now();
+    
+    // Find the spy
+    let spyId = this.getSpyId();
+    
+    // Determine if the spy won (always true if spy left)
+    const spyWon = reason === 'spy-left';
+    
+    // Store results for getStateForPlayer to use
+    this.results = {
+      votes: this.votes,
+      spyId,
+      mostVotedId: null,
+      spyWon,
+      location: this.currentLocation,
+      spyGuess: this.spyGuess,
+      reason
+    };
+    
+    this.lastUpdateTime = Date.now();
+  }
+
+  /**
+   * Get the game state safe to send to a specific player
+   * @param {string|null} playerId - ID of the player to get state for, or null for public state
+   * @returns {Object} - Game state with only information the player should know
+   */
+  getStateForPlayer(playerId) {
+    // Basic state that everyone can see
+    const state = {
+      gameId: this.id,
+      state: this.state,
+      players: Array.from(this.players.values()).map(p => {
+        const playerData = p.toJSON();
+        // Add additional public info for voting phase or results
+        if (this.state === GameState.VOTING || this.state === GameState.RESULTS) {
+          playerData.votesReceived = this.votes.get(p.id) || 0;
+        }
+        return playerData;
+      }),
+      hostId: this.hostId,
+      round: this.currentRound,
+      maxRounds: this.maxRounds,
+      voteCallers: Array.from(this.voteCallers),
+      roundTime: this.roundTime / 60, // Convert to minutes for the client
+      timeRemaining: Math.ceil(this.timeRemaining / 60) // Convert to minutes and round up
+    };
+    
+    // Add location packs info if in lobby
+    if (this.state === GameState.LOBBY) {
+      state.locationPacks = this.getLocationPacks();
+    }
+    
+    // Player specific info
+    if (playerId && this.players.has(playerId)) {
+      const player = this.players.get(playerId);
+      state.isSpy = player.isSpy;
+      
+      // Only show the location if player is not the spy (unless in results)
+      if (!player.isSpy || this.state === GameState.RESULTS) {
+        state.location = this.currentLocation;
+      }
+      
+      // For spy in spy_guessing state, show all possible locations
+      if (player.isSpy && this.state === GameState.SPY_GUESSING) {
+        state.possibleLocations = this.getAvailableLocations();
+      }
+    }
+    
+    // Results state available to all players
+    if (this.state === GameState.RESULTS && this.results) {
+      state.results = {
+        spyId: this.results.spyId,
+        mostVotedId: this.results.mostVotedId,
+        spyWon: this.results.spyWon,
+        location: this.results.location,
+        spyGuess: this.results.spyGuess,
+        spyGuessedCorrectly: this.results.spyGuessedCorrectly
+      };
+      
+      // Convert votes map to a format that can be serialized
+      state.results.votes = {};
+      for (const [playerId, voteCount] of this.results.votes.entries()) {
+        state.results.votes[playerId] = voteCount;
+      }
+    }
+    
+    return state;
+  }
+}
+
+module.exports = { Game, GameState }; 

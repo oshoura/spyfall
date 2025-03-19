@@ -1,0 +1,2 @@
+do not use comments unless absolutely necessary. Code should be self explantory and easy to understand. If complexity is absolutely needed, and you worry user may not understand why, then use comments to explain.
+

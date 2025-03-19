@@ -1,0 +1,758 @@
+<template>
+  <div class="min-h-screen bg-gray-50 py-6 md:py-10">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div v-if="errorMessage" class="bg-red-100 text-red-800 p-4 mb-6 rounded-lg text-center">
+        {{ errorMessage }}
+      </div>
+      
+      <!-- Game Header -->
+      <div class="bg-white p-4 md:p-5 rounded-xl shadow-sm border border-gray-200 mb-6">
+        <div class="flex flex-col justify-between items-center gap-3">
+          <div class="text-xl font-bold text-gray-800">Round {{ gameState?.round || 1 }}</div>
+          
+          <!-- Timer -->
+          <div v-if="gameState?.roundTime && gameState.roundTime > 0" class="flex items-center gap-2 text-lg font-medium" :class="{ 'text-red-600': timeRemaining < 120 }">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-timer"><path d="M10 2h4"></path><path d="M12 14v-4"></path><path d="M4 13a8 8 0 0 1 8-7 8 8 0 1 1-5.3 14L4 17.6"></path><path d="M9 17H4v5"></path></svg>
+            <span>{{ formatTime(timeRemaining) }}</span>
+          </div>
+          <div v-else-if="gameState?.roundTime === 0" class="flex items-center gap-2 text-lg font-medium text-gray-600">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-infinity"><path d="M18.178 8c5.096 0 5.096 8 0 8-5.095 0-7.133-8-12.739-8-4.585 0-4.585 8 0 8 5.606 0 7.644-8 12.74-8z"></path></svg>
+            <span>No Time Limit</span>
+          </div>
+          
+          <div v-if="!isSpy" class="text-lg">
+            Location: <span class="font-bold text-orange-600">{{ currentLocation }}</span>
+          </div>
+          <div v-else class="text-lg font-bold text-orange-600">
+            You are the spy! Try to figure out the location.
+          </div>
+        </div>
+      </div>
+
+      <!-- Vertical Cards Layout -->
+      <div class="grid grid-cols-1 gap-6 mb-6">
+        <!-- Players List -->
+        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+          <div class="flex justify-between items-center mb-3">
+            <h2 class="text-lg font-bold text-gray-800">Players</h2>
+          </div>
+          
+          <!-- Use PlayerMarker component for non-spies -->
+          <div v-if="!isSpy && gamePhase === 'playing'">
+            <p class="text-sm text-gray-600 mb-3">Click to mark players as suspicious. Click the vote button next to a player to vote for them as the spy.</p>
+            <PlayerMarker 
+              :gamePlayers="players" 
+              :currentPlayerId="currentPlayerId" 
+              :hostId="hostId"
+              :showVoteButton="true"
+              :showVotes="showVoteCounts"
+              @vote="votePlayer"
+              ref="playerMarkerRef"
+            />
+          </div>
+          
+          <!-- Default player list for spies or other phases -->
+          <div v-else class="grid gap-3">
+            <div 
+              v-for="player in players" 
+              :key="player.id"
+              class="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-100 transition-all hover:shadow-md"
+              :class="{ 
+                'border-l-4 border-l-blue-500': player.id === currentPlayerId,
+                'bg-purple-50 border-purple-300': currentPlayer?.votedFor === player.id
+              }"
+            >
+              <div class="flex items-center space-x-2">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center" 
+                     :class="{
+                       'bg-blue-100 text-blue-700': currentPlayer?.votedFor !== player.id,
+                       'bg-purple-100 text-purple-700': currentPlayer?.votedFor === player.id
+                     }">
+                  <span class="font-bold">{{ player.name.charAt(0).toUpperCase() }}</span>
+                </div>
+                <div class="flex flex-col">
+                  <div class="flex items-center">
+                    <span class="font-medium">{{ player.name }}</span>
+                    <span v-if="player.id === currentPlayerId" class="ml-2 text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">You</span>
+                    <span v-if="player.id === hostId" class="ml-2 text-xs bg-orange-500 text-white px-2 py-0.5 rounded-full">Host</span>
+                    <span v-if="currentPlayer?.votedFor === player.id" class="ml-2 text-xs bg-purple-500 text-white px-2 py-0.5 rounded-full">Your Vote</span>
+                  </div>
+                  <div class="flex mt-1 space-x-2">
+                    <span v-if="player.hasVoted" class="text-xs text-gray-500 flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                      </svg>
+                      Voted
+                    </span>
+                    <span v-if="showVoteCounts && player.votesReceived && player.votesReceived > 0" 
+                          class="text-xs text-purple-600 flex items-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" />
+                      </svg>
+                      {{ player.votesReceived }} vote{{ player.votesReceived > 1 ? 's' : '' }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <Button 
+                v-if="player.id !== currentPlayerId && (gamePhase === 'playing' || gamePhase === 'voting')"
+                @click="votePlayer(player.id)" 
+                variant="destructive" 
+                size="sm"
+                :class="{ 'bg-purple-600 hover:bg-purple-700': currentPlayer?.votedFor === player.id }"
+              >
+                {{ currentPlayer?.votedFor === player.id ? 'Change Vote' : 'Vote' }}
+              </Button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Possible Locations for Spies -->
+        <div v-if="isSpy" class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+          <div class="flex justify-between items-center mb-3">
+            <h2 class="text-lg font-bold text-gray-800">Possible Locations</h2>
+            <Button 
+              v-if="isSpy" 
+              @click="showSpyGuessModal = true" 
+              variant="destructive" 
+              size="sm"
+            >
+              Guess Location
+            </Button>
+          </div>
+          <p class="text-sm text-gray-600 mb-3">Click to star locations you think are likely, click again to scratch them out, click a third time to reset.</p>
+          <LocationTiles 
+            :allLocations="allPossibleLocations" 
+            :findPackForLocation="findPackForLocation"
+            ref="locationTilesRef"
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Modal for spy to guess location -->
+  <Dialog v-model:open="showSpyGuessModal">
+    <DialogContent class="sm:max-w-md">
+      <DialogHeader>
+        <DialogTitle>Guess the Location</DialogTitle>
+        <DialogDescription>
+          If you guess correctly, you win! Choose wisely.
+        </DialogDescription>
+      </DialogHeader>
+      <div class="grid gap-4 py-4">
+        <Label for="location-select" class="text-left">Select a location:</Label>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-[40vh] overflow-y-auto">
+          <Button 
+            v-for="location in sortedLocationsForSelection"
+            :key="location.name"
+            variant="outline"
+            :class="{ 'border-orange-500 bg-orange-50': spyGuess === location.name }"
+            @click="selectLocationForGuess(location.name)"
+            class="flex flex-col h-auto p-2"
+          >
+            <img 
+              :src="getLocationImage(location.name)" 
+              :alt="location.name" 
+              class="w-full h-16 object-cover rounded mb-1"
+              @error="handleImageError"
+            />
+            <span class="text-xs">{{ location.name }}</span>
+          </Button>
+        </div>
+      </div>
+      <DialogFooter>
+        <Button @click="showSpyGuessModal = false" variant="outline">Cancel</Button>
+        <Button @click="submitSpyGuess" variant="orange" :disabled="!spyGuess || isLoading">Confirm Guess</Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+  
+  <!-- Modal for round results -->
+  <Dialog v-model:open="showRoundResultsModal">
+    <DialogContent class="sm:max-w-md">
+      <DialogHeader>
+        <DialogTitle class="text-xl">
+          <span v-if="votingResults?.spyWon" class="text-orange-600">The Spy Won!</span>
+          <span v-else class="text-green-600">The Spy Was Caught!</span>
+        </DialogTitle>
+        <DialogDescription class="text-base">
+          Round {{ gameState?.round || 1 }} has ended
+        </DialogDescription>
+      </DialogHeader>
+      
+      <div v-if="votingResults" class="py-4 space-y-6">
+        <!-- Location reveal -->
+        <div class="flex items-center justify-center gap-4 p-4 rounded-lg bg-gray-50">
+          <div class="text-center flex-1">
+            <div class="text-sm text-gray-500 mb-1">The location was</div>
+            <div class="text-lg font-bold text-gray-800">{{ votingResults.location }}</div>
+          </div>
+          <img 
+            v-if="!isSpy" 
+            :src="getLocationImage(votingResults.location)"
+            class="w-24 h-24 object-cover rounded-lg"
+            :alt="votingResults.location"
+          />
+        </div>
+        
+        <!-- Spy identity -->
+        <div class="flex items-center justify-between p-4 rounded-lg bg-orange-50 border border-orange-100">
+          <div>
+            <div class="text-sm text-gray-500 mb-1">The spy was</div>
+            <div class="text-base font-medium">{{ getPlayerName(votingResults.spyId) }}</div>
+          </div>
+          <div class="text-sm bg-orange-500 text-white px-3 py-1 rounded-full">Spy</div>
+        </div>
+        
+        <!-- Time-up scenario -->
+        <div v-if="votingResults.reason === 'time-up'" class="p-4 rounded-lg bg-blue-50 border border-blue-100">
+          <p class="text-blue-800">
+            Time ran out! The spy wins by default.
+          </p>
+        </div>
+        
+        <!-- Spy guess scenario -->
+        <div v-else-if="votingResults.spyGuess" class="p-4 rounded-lg" :class="votingResults.spyGuessedCorrectly ? 'bg-orange-50 border border-orange-100' : 'bg-green-50 border border-green-100'">
+          <div class="text-sm mb-2" :class="votingResults.spyGuessedCorrectly ? 'text-orange-800' : 'text-green-800'">
+            The spy guessed: <strong>{{ votingResults.spyGuess }}</strong>
+          </div>
+          <p v-if="votingResults.spyGuessedCorrectly" class="text-orange-800 font-medium">
+            The spy's guess was correct! They win the round!
+          </p>
+          <p v-else class="text-green-800 font-medium">
+            The spy's guess was wrong! Everyone else wins!
+          </p>
+        </div>
+        
+        <!-- Voting scenario -->
+        <div v-else class="p-4 rounded-lg" :class="votingResults.spyWon ? 'bg-orange-50 border border-orange-100' : 'bg-green-50 border border-green-100'">
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <div class="text-sm text-gray-500">Most voted player</div>
+              <div class="text-base font-medium">{{ getPlayerName(votingResults.mostVotedId) }}</div>
+            </div>
+            <div v-if="votingResults.spyId === votingResults.mostVotedId" class="text-sm bg-green-500 text-white px-3 py-1 rounded-full">Correct!</div>
+            <div v-else class="text-sm bg-red-500 text-white px-3 py-1 rounded-full">Incorrect!</div>
+          </div>
+          
+          <p v-if="votingResults.spyWon" class="text-orange-800 mt-2 mb-4">
+            The group voted for the wrong person! The spy remains hidden and wins the round!
+          </p>
+          <p v-else class="text-green-800 mt-2 mb-4">
+            Great job! The group correctly identified the spy and wins the round!
+          </p>
+          
+          <!-- Show vote distribution -->
+          <div v-if="votingResults.votes" class="mt-4 pt-3 border-t border-gray-200">
+            <h4 class="text-sm font-medium text-gray-700 mb-2">Vote Breakdown</h4>
+            <div class="space-y-2">
+              <div 
+                v-for="player in sortedPlayers" 
+                :key="player.id" 
+                class="flex justify-between items-center py-1 px-2 rounded"
+                :class="player.id === votingResults.spyId ? 'bg-orange-50' : ''"
+              >
+                <div class="flex items-center">
+                  <span>{{ player.name }}</span>
+                  <span v-if="player.id === votingResults.spyId" class="ml-2 text-xs bg-orange-500 text-white px-2 py-0.5 rounded-full">Spy</span>
+                </div>
+                <div class="flex items-center">
+                  <div v-if="getVoteCount(player.id) > 0" class="text-xs bg-purple-500 text-white px-2 py-0.5 rounded-full">
+                    {{ getVoteCount(player.id) }} vote{{ getVoteCount(player.id) > 1 ? 's' : '' }}
+                  </div>
+                  <div v-else class="text-xs text-gray-500">No votes</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <DialogFooter>
+        <Button v-if="isHost" @click="returnToLobby" variant="orange" :disabled="isLoading">
+          Return to Lobby
+        </Button>
+        <Button v-else variant="outline" :disabled="isLoading">
+          Waiting for host...
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
+  
+  <Toaster />
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
+import socketService from '../services/socketService'
+import type { Player } from '../services/socketService'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import Toaster from '@/components/ui/toast/Toaster.vue'
+import { useToast } from '@/components/ui/toast/use-toast'
+import LocationTiles from '../components/LocationTiles.vue'
+import PlayerMarker from '../components/PlayerMarker.vue'
+import { Label } from '@/components/ui/label'
+
+const router = useRouter()
+const isLoading = ref(false)
+const errorMessage = ref('')
+const currentPlayerId = computed(() => socketService.playerId.value)
+const showSpyGuessModal = ref(false)
+const showRoundResultsModal = ref(false)
+const spyGuess = ref('')
+const timeRemaining = ref(0)
+const timerInterval = ref<ReturnType<typeof setInterval> | undefined>(undefined)
+const locationTilesRef = ref<InstanceType<typeof LocationTiles> | null>(null)
+const playerMarkerRef = ref<InstanceType<typeof PlayerMarker> | null>(null)
+const { toast } = useToast()
+
+// Get game state from socket service
+const gameState = computed(() => socketService.gameState.value)
+const playerId = computed(() => socketService.playerId.value)
+
+// Computed properties
+const players = computed<Player[]>(() => gameState.value?.players || [])
+const currentLocation = computed(() => gameState.value?.location || '')
+const isSpy = computed(() => gameState.value?.isSpy || false)
+const gamePhase = computed(() => gameState.value?.state || 'playing')
+const isHost = computed(() => gameState.value?.hostId === playerId.value)
+const hasVoted = computed(() => {
+  const currentPlayerId = playerId.value;
+  if (!currentPlayerId) return false;
+  
+  const player = players.value.find(p => p.id === currentPlayerId);
+  return player?.hasVoted || false;
+})
+
+// Add this interface for the voting results type
+interface VotingResults {
+  spyId: string;
+  mostVotedId: string;
+  spyWon: boolean;
+  location: string;
+  spyGuess?: string;
+  spyGuessedCorrectly?: boolean;
+  reason?: string;
+  votes: Record<string, number>; // Record object with player IDs as keys and vote counts as values
+}
+
+// Helper function to convert the results from the server to our VotingResults type
+const convertToVotingResults = (rawResults: any): VotingResults => {
+  // Create a basic result structure with known properties
+  const result: VotingResults = {
+    spyId: rawResults.spyId,
+    mostVotedId: rawResults.mostVotedId,
+    spyWon: rawResults.spyWon,
+    location: rawResults.location,
+    votes: {}
+  };
+  
+  // Add optional properties if they exist
+  if (rawResults.spyGuess) result.spyGuess = rawResults.spyGuess;
+  if (rawResults.spyGuessedCorrectly) result.spyGuessedCorrectly = rawResults.spyGuessedCorrectly;
+  if (rawResults.reason) result.reason = rawResults.reason;
+  
+  // Convert votes from server format to a simple Record
+  if (rawResults.votes) {
+    // Handle both Map objects and plain objects
+    if (typeof rawResults.votes === 'object') {
+      // If votes is already a plain object, use it directly
+      if (!(rawResults.votes instanceof Map)) {
+        result.votes = rawResults.votes;
+      } else {
+        // If votes is a Map, convert it to a plain object
+        rawResults.votes.forEach((value: number, key: string) => {
+          result.votes[key] = value;
+        });
+      }
+    }
+  }
+  
+  return result;
+};
+
+// Update the computed property for votingResults
+const votingResults = computed<VotingResults | null>(() => {
+  if (!gameState.value?.results) return null;
+  return convertToVotingResults(gameState.value.results);
+});
+
+const locationImage = computed(() => {
+  if (!currentLocation.value || isSpy.value) return null;
+  
+  // Try to find the pack that contains this location
+  const packId = findPackForLocation(currentLocation.value);
+  
+  const sanitizedName = currentLocation.value.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  return `/images/locations/${packId}/${sanitizedName}.png`;
+});
+
+// Format time remaining in MM:SS format
+const formatTime = (seconds: number): string => {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+};
+
+// Start the timer
+const startTimer = (durationInMinutes: number) => {
+  // Don't start timer for "No Time Limit" option
+  if (durationInMinutes <= 0) {
+    timeRemaining.value = 0;
+    return;
+  }
+  
+  // Clear any existing timer
+  if (timerInterval.value) {
+    clearInterval(timerInterval.value);
+  }
+  
+  // Set initial time
+  timeRemaining.value = durationInMinutes * 60;
+  
+  // Start the interval
+  timerInterval.value = window.setInterval(() => {
+    if (timeRemaining.value > 0) {
+      timeRemaining.value--;
+    } else {
+      // Time's up
+      if (timerInterval.value) {
+        clearInterval(timerInterval.value);
+        timerInterval.value = undefined;
+      }
+      
+      // Toast notification for time's up
+      toast({
+        title: "Time's up!",
+        description: "The round has ended",
+        duration: 3000,
+      });
+    }
+  }, 1000);
+};
+
+// Watch for state changes to fetch locations when entering spy_guessing state
+watch(() => gameState.value?.state, (newState) => {
+  if (newState === 'lobby') {
+    router.push('/lobby')
+  } else if (newState === 'results') {
+    showRoundResultsModal.value = true;
+    showSpyGuessModal.value = false;
+  } else if (newState === 'spy_guessing' && isSpy.value) {
+    // Fetch fresh list of locations when spy is guessing
+    fetchPossibleLocations();
+  }
+})
+
+// Watch for timer events from the server
+watch(() => gameState.value?.timerStarted, (newTimerStarted, oldTimerStarted) => {
+  if (newTimerStarted && newTimerStarted !== oldTimerStarted) {
+    // Start the timer with the round time from the server
+    const roundTimeMinutes = gameState.value?.roundTime || 2;
+    startTimer(roundTimeMinutes);
+    
+    toast({
+      title: "Round started",
+      description: `You have ${roundTimeMinutes} minutes to play`,
+      duration: 3000,
+    });
+  }
+})
+
+watch(() => gameState.value?.timerEnded, (newTimerEnded, oldTimerEnded) => {
+  if (newTimerEnded && newTimerEnded !== oldTimerEnded) {
+    // Stop the timer
+    if (timerInterval.value) {
+      clearInterval(timerInterval.value);
+      timerInterval.value = undefined;
+    }
+    
+    // Set time remaining to 0
+    timeRemaining.value = 0;
+    
+    // Show time's up notification
+    toast({
+      title: "Time's up!",
+      description: "The round has ended",
+      duration: 3000,
+    });
+  }
+})
+
+// Watch for possibleLocations from server
+watch(() => gameState.value?.possibleLocations, (newLocations) => {
+  if (newLocations && newLocations.length > 0) {
+    allPossibleLocations.value = newLocations;
+  }
+})
+
+// Check if we have a game state on mount
+onMounted(() => {
+  if (!gameState.value || gameState.value.state === 'lobby') {
+    router.push('/lobby')
+    return
+  }
+  
+  // Fetch possible locations for spy guessing
+  fetchPossibleLocations();
+  
+  // Start the timer if the game is already in progress (don't set currentPlayerId)
+  if (gameState.value?.timerStarted && gameState.value?.roundTime) {
+    // Calculate remaining time based on when the timer started
+    const startTime = new Date(gameState.value.timerStarted).getTime();
+    const currentTime = new Date().getTime();
+    const elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
+    const totalSeconds = gameState.value.roundTime * 60;
+    const remainingSeconds = Math.max(0, totalSeconds - elapsedSeconds);
+    
+    // Start the timer with the remaining time
+    timeRemaining.value = remainingSeconds;
+    
+    timerInterval.value = setInterval(() => {
+      if (timeRemaining.value > 0) {
+        timeRemaining.value--;
+      } else {
+        // Time's up
+        if (timerInterval.value) {
+          clearInterval(timerInterval.value);
+          timerInterval.value = undefined;
+        }
+      }
+    }, 1000);
+  }
+  // If no timer has been started yet but we're in playing phase, start it now
+  else if (gameState.value.state === 'playing' && gameState.value.roundTime !== undefined) {
+    startTimer(gameState.value.roundTime);
+  }
+})
+
+// Clean up the timer when the component is unmounted
+onUnmounted(() => {
+  if (timerInterval.value) {
+    clearInterval(timerInterval.value);
+  }
+})
+
+// Get the current player
+const currentPlayer = computed(() => {
+  return players.value.find(p => p.id === currentPlayerId.value);
+})
+
+// End turn
+const endTurn = async () => {
+  try {
+    isLoading.value = true
+    errorMessage.value = ''
+    
+    await socketService.endTurn()
+    
+    // Find next player - but don't set the currentPlayerId directly
+    const currentIndex = players.value.findIndex(player => player.id === currentPlayerId.value)
+    const nextIndex = (currentIndex + 1) % players.value.length
+    
+    toast({
+      title: "Turn ended",
+      description: `It's now ${players.value[nextIndex].name}'s turn`,
+      duration: 3000,
+    })
+  } catch (error) {
+    console.error('Error ending turn:', error)
+    errorMessage.value = error instanceof Error ? error.message : 'Failed to end turn'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// Vote for a player
+const votePlayer = async (targetId: string) => {
+  // Get current player info
+  const currentPlayer = players.value.find(p => p.id === currentPlayerId.value);
+  
+  // Check if player is trying to vote for the same player again
+  if (currentPlayer?.votedFor === targetId) {
+    toast({
+      title: "Already voted",
+      description: "You've already voted for this player. Choose someone else to change your vote.",
+      duration: 3000,
+    });
+    return;
+  }
+  
+  try {
+    isLoading.value = true;
+    errorMessage.value = '';
+    
+    // If player already voted for someone else, show that they're changing their vote
+    const isChangingVote = currentPlayer?.hasVoted;
+    
+    await socketService.submitVote(targetId);
+    
+    // Update the local player state to reflect the vote change
+    // This will be properly updated by the server but we update it locally for immediate feedback
+    if (currentPlayer) {
+      currentPlayer.hasVoted = true;
+      currentPlayer.votedFor = targetId;
+    }
+    
+    toast({
+      title: isChangingVote ? "Vote changed" : "Vote submitted",
+      description: isChangingVote ? "Your vote has been changed" : "Your vote has been recorded",
+      duration: 3000,
+    });
+  } catch (error) {
+    console.error('Error submitting vote:', error);
+    errorMessage.value = error instanceof Error ? error.message : 'Failed to submit vote';
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+// Return to lobby
+const returnToLobby = async () => {
+  if (!isHost.value) return
+  
+  try {
+    isLoading.value = true
+    errorMessage.value = ''
+    
+    await socketService.returnToLobby()
+  } catch (error) {
+    console.error('Error returning to lobby:', error)
+    errorMessage.value = error instanceof Error ? error.message : 'Failed to return to lobby'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+function findPackForLocation(locationName: string): string {
+  // If we have location packs in the game state
+  const packs = gameState.value?.locationPacks || [];
+  
+  // If we already know the packs directly, check each selected pack
+  // Unfortunately we don't have the actual locations for each pack in the client
+  // We just have to try all selected packs and hope the image exists
+  const selectedPacks = packs.filter(pack => pack.selected).map(pack => pack.id);
+  
+  // If there are selected packs, use the first one as a best guess
+  // In a more complete implementation, we would get the full pack data
+  // from the server to know exactly which pack contains which location
+  if (selectedPacks.length > 0) {
+    return selectedPacks[0];
+  }
+  
+  // If no packs are selected, default to basic
+  return 'basic';
+}
+
+// Submit spy guess
+const submitSpyGuess = async () => {
+  if (!spyGuess.value) return
+  
+  try {
+    isLoading.value = true
+    errorMessage.value = ''
+    
+    const result = await socketService.makeSpyGuess(spyGuess.value)
+    
+    showSpyGuessModal.value = false
+    spyGuess.value = ''
+    
+    toast({
+      title: "Guess submitted",
+      description: "Your guess has been submitted",
+      duration: 3000,
+    })
+  } catch (error) {
+    console.error('Error submitting spy guess:', error)
+    errorMessage.value = error instanceof Error ? error.message : 'Failed to submit spy guess'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// Select location for guess
+const selectLocationForGuess = (locationName: string) => {
+  spyGuess.value = locationName;
+};
+
+// Get location image
+const getLocationImage = (locationName: string): string => {
+  if (!locationName) return '';
+  
+  // Try to find the pack that contains this location
+  const packId = findPackForLocation(locationName);
+  
+  const sanitizedName = locationName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  return `/images/locations/${packId}/${sanitizedName}.png`;
+}
+
+// Get all possible locations from the server
+const allPossibleLocations = ref<string[]>([]);
+
+// Fetch locations from the server
+const fetchPossibleLocations = async () => {
+  try {
+    const result = await socketService.getPossibleLocations();
+    allPossibleLocations.value = result.locations;
+  } catch (error) {
+    console.error('Error fetching locations:', error);
+    // Fallback to some default locations if fetch fails
+    allPossibleLocations.value = [
+      "Airplane", "Bank", "Beach", "Casino", "Hospital", 
+      "Hotel", "Restaurant", "School", "Space Station", 
+      "Submarine", "Supermarket"
+    ];
+  }
+};
+
+// Get sorted locations for selection
+const sortedLocationsForSelection = computed(() => {
+  if (!locationTilesRef.value) return [];
+  return locationTilesRef.value.getSortedLocationsForSelection;
+});
+
+// Voting results display functions
+const getPlayerName = (id: string | undefined): string => {
+  if (!id) return 'Unknown';
+  const player = players.value.find(player => player.id === id);
+  return player?.name || 'Unknown';
+};
+
+// Add this computed property to determine when to show vote counts
+const showVoteCounts = computed(() => {
+  return gameState.value?.state === 'voting' || gameState.value?.state === 'results';
+});
+
+// Helper for vote counts in results modal
+const getVoteCount = (playerId: string): number => {
+  if (!votingResults.value?.votes || !playerId) return 0;
+  return votingResults.value.votes[playerId] || 0;
+};
+
+// Sort players by vote count for results display
+const sortedPlayers = computed(() => {
+  return [...players.value].sort((a, b) => {
+    const votesA = getVoteCount(a.id);
+    const votesB = getVoteCount(b.id);
+    return votesB - votesA; // Sort by descending vote count
+  });
+});
+
+// Handle image error
+const handleImageError = (event: Event) => {
+  const target = event.target as HTMLImageElement;
+  // Set a placeholder image
+  target.src = '/images/locations/placeholder.png';
+};
+</script> 
