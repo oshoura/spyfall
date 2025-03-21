@@ -11,7 +11,7 @@
           <div class="flex items-center justify-between w-full">
             <div class="text-xl font-bold text-gray-800">Round {{ gameState?.round || 1 }}</div>
             <Button 
-              v-if="isHost && gamePhase === 'playing'" 
+              v-if="isHost && isPlayingPhase" 
               @click="endRoundEarly" 
               variant="destructive" 
               size="sm"
@@ -49,7 +49,7 @@
           </div>
           
           <!-- Use PlayerMarker component for players during playing/voting phases -->
-          <div v-if="gameState?.state === 'playing' || gameState?.state === 'voting'">
+          <div v-if="canVote">
             <p class="text-sm text-gray-600 mb-3">
               <span v-if="!isSpy">Click to mark players as suspicious. Click the vote button next to a player to vote for them as the spy.</span>
               <span v-else>You can vote for a player to maintain your cover, but be careful who you choose!</span>
@@ -91,8 +91,8 @@
                     <span v-if="player.id === gameState?.hostId" class="ml-2 text-xs bg-orange-500 text-white px-2 py-0.5 rounded-full">Host</span>
                     <span v-if="currentPlayer?.votedFor === player.id" class="ml-2 text-xs bg-purple-500 text-white px-2 py-0.5 rounded-full">Your Vote</span>
                   </div>
-                  <!-- Show vote count more prominently during voting or when votes are present -->
-                  <div v-if="(gamePhase === 'voting' || gamePhase === 'results') && player.votesReceived" 
+                  <!-- Show vote count more prominently during any phase if votes are present -->
+                  <div v-if="player.votesReceived" 
                        class="mt-1 flex items-center">
                     <span class="bg-purple-100 text-purple-800 text-xs font-medium px-2 py-0.5 rounded">
                       {{ player.votesReceived }} vote{{ player.votesReceived > 1 ? 's' : '' }}
@@ -101,7 +101,7 @@
                 </div>
               </div>
               <Button 
-                v-if="player.id !== currentPlayerId && (gamePhase === 'playing' || gamePhase === 'voting')"
+                v-if="player.id !== currentPlayerId && canVote"
                 @click="votePlayer(player.id)" 
                 variant="destructive" 
                 size="sm"
@@ -336,6 +336,12 @@ const currentLocation = computed(() => gameState.value?.location || '')
 const isSpy = computed(() => gameState.value?.isSpy || false)
 const gamePhase = computed(() => gameState.value?.state || 'playing')
 const isHost = computed(() => gameState.value?.hostId === playerId.value)
+
+// Helper computed properties for phase checks
+const isPlayingPhase = computed(() => gamePhase.value === 'playing')
+const isVotingPhase = computed(() => gamePhase.value === 'voting')
+const isResultsPhase = computed(() => gamePhase.value === 'results')
+const canVote = computed(() => isPlayingPhase.value || isVotingPhase.value)
 
 // Add this interface for the voting results type
 interface VotingResults {
@@ -729,7 +735,8 @@ const getPlayerName = (id: string | undefined): string => {
 
 // Add this computed property to determine when to show vote counts
 const showVoteCounts = computed(() => {
-  return gameState.value?.state === 'voting' || gameState.value?.state === 'results';
+  // Show votes during playing and voting phases as well as results
+  return true;
 });
 
 // Helper for vote counts in results modal

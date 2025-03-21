@@ -552,10 +552,8 @@ class Game {
       state: this.state,
       players: Array.from(this.players.values()).map(p => {
         const playerData = p.toJSON();
-        // Add additional public info for voting phase or results
-        if (this.state === GameState.VOTING || this.state === GameState.RESULTS) {
-          playerData.votesReceived = this.votes.get(p.id) || 0;
-        }
+        // Add vote counts during all phases - playing, voting, and results
+        playerData.votesReceived = this.votes.get(p.id) || 0;
         return playerData;
       }),
       hostId: this.hostId,
