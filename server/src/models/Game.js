@@ -33,7 +33,7 @@ class Game {
     this.maxRounds = 5;
     this.usedLocations = new Set();
     this.lastUpdateTime = Date.now();
-    this.selectedLocationPacks = ['basic']; // Default to basic pack
+    this.selectedLocationPacks = ['basic1']; // Default to basic pack
     this.voteCallers = new Set(); // Players who called for a vote
     this.spyGuess = null; // The spy's guess for the location
     this.votes = new Map(); // Map of player ID to votes received
@@ -41,6 +41,29 @@ class Game {
     this.roundEndTime = null; // Timestamp when the round ended
     this.minPlayers = 3; // Minimum players required to start
     this.maxPlayers = 16; // Maximum players allowed
+    this.locationToPack = this.generateLocationToPackMap(); // Map of location names to pack IDs
+  }
+
+  /**
+   * Generate a mapping of location names to their respective pack IDs
+   * @returns {Object} - Map of location names to pack IDs they belong to
+   */
+  generateLocationToPackMap() {
+    const mapping = {};
+    
+    // Loop through all location packs
+    Object.entries(locationPacks).forEach(([packId, packData]) => {
+      // For each location in the pack, add to the mapping
+      packData.locations.forEach(locationName => {
+        // Some locations might exist in multiple packs
+        // We'll use the first pack we find for each location
+        if (!mapping[locationName]) {
+          mapping[locationName] = packId;
+        }
+      });
+    });
+    
+    return mapping;
   }
 
   /**
@@ -122,7 +145,7 @@ class Game {
       
       // If no valid packs, default to basic
       if (this.selectedLocationPacks.length === 0) {
-        this.selectedLocationPacks = ['basic'];
+        this.selectedLocationPacks = ['basic1'];
       }
     }
     
@@ -533,7 +556,8 @@ class Game {
       maxRounds: this.maxRounds,
       voteCallers: Array.from(this.voteCallers),
       roundTime: this.roundTime / 60, // Convert to minutes for the client
-      timeRemaining: Math.ceil(this.timeRemaining / 60) // Convert to minutes and round up
+      timeRemaining: Math.ceil(this.timeRemaining / 60), // Convert to minutes and round up
+      locationToPack: this.locationToPack // Add location-to-pack mapping
     };
     
     // Add location packs info if in lobby

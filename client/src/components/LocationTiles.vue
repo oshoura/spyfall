@@ -12,7 +12,7 @@
     >
       <div class="aspect-square">
         <img 
-          :src="getLocationImage(location.name)" 
+          :src="props.getLocationImage ? props.getLocationImage(location.name) : getDefaultImage(location.name)" 
           :alt="location.name"
           class="w-full h-full object-cover"
           :class="{ 'opacity-50': location.status === 'scratched' }"
@@ -46,7 +46,7 @@ import { ref, computed, watch } from 'vue';
 // Props
 interface Props {
   allLocations: string[];
-  findPackForLocation?: (locationName: string) => string;
+  getLocationImage?: (locationName: string) => string;
 }
 
 const props = defineProps<Props>();
@@ -82,14 +82,10 @@ const toggleLocationStatus = (location: Location) => {
   }
 };
 
-// Get image for location
-const getLocationImage = (locationName: string): string => {
+// Default image function if no getLocationImage is provided
+const getDefaultImage = (locationName: string): string => {
   const sanitizedName = locationName.toLowerCase().replace(/[^a-z0-9]/g, '-');
-  
-  // Use the findPackForLocation function if provided, otherwise default to basic
-  const packId = props.findPackForLocation ? props.findPackForLocation(locationName) : 'basic';
-  
-  return `/images/locations/${packId}/${sanitizedName}.png`;
+  return `/images/locations/basic/${sanitizedName}.png`;
 };
 
 // Get sorted locations for selection

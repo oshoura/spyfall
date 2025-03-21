@@ -126,7 +126,7 @@
           <p class="text-sm text-gray-600 mb-3">Click to star locations you think are likely, click again to scratch them out, click a third time to reset.</p>
           <LocationTiles 
             :allLocations="allPossibleLocations" 
-            :findPackForLocation="findPackForLocation"
+            :getLocationImage="getLocationImage"
             ref="locationTilesRef"
           />
         </div>
@@ -640,26 +640,6 @@ const returnToLobby = async () => {
   }
 }
 
-function findPackForLocation(): string {
-  // If we have location packs in the game state
-  const packs = gameState.value?.locationPacks || [];
-  
-  // If we already know the packs directly, check each selected pack
-  // Unfortunately we don't have the actual locations for each pack in the client
-  // We just have to try all selected packs and hope the image exists
-  const selectedPacks = packs.filter(pack => pack.selected).map(pack => pack.id);
-  
-  // If there are selected packs, use the first one as a best guess
-  // In a more complete implementation, we would get the full pack data
-  // from the server to know exactly which pack contains which location
-  if (selectedPacks.length > 0) {
-    return selectedPacks[0];
-  }
-  
-  // If no packs are selected, default to basic
-  return 'basic';
-}
-
 // Submit spy guess
 const submitSpyGuess = async () => {
   if (!spyGuess.value) return
@@ -695,12 +675,26 @@ const selectLocationForGuess = (locationName: string) => {
 const getLocationImage = (locationName: string): string => {
   if (!locationName) return '';
   
-  // Try to find the pack that contains this location
-  const packId = findPackForLocation();
-  
+  // Sanitize the location name for use in the file path
   const sanitizedName = locationName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  
+  // Get the location-to-pack mapping from the game state
+  // Using type assertion to handle the new property that TypeScript doesn't know about yet
+  const gameStateAny = gameState.value as any;
+  const locationToPack = gameStateAny?.locationToPack || {};
+  
+  // Get the pack ID for this location
+  let packId = locationToPack[locationName];
+  
+  // If no pack ID is found, fall back to the first selected pack
+  if (!packId) {
+    const packs = gameState.value?.locationPacks || [];
+    const selectedPacks = packs.filter(pack => pack.selected).map(pack => pack.id);
+    packId = selectedPacks.length > 0 ? selectedPacks[0] : 'basic1';
+  }
+  
   return `/images/locations/${packId}/${sanitizedName}.png`;
-}
+};
 
 // Get all possible locations from the server
 const allPossibleLocations = ref<string[]>([]);
@@ -713,11 +707,7 @@ const fetchPossibleLocations = async () => {
   } catch (error) {
     console.error('Error fetching locations:', error);
     // Fallback to some default locations if fetch fails
-    allPossibleLocations.value = [
-      "Airplane", "Bank", "Beach", "Casino", "Hospital", 
-      "Hotel", "Restaurant", "School", "Space Station", 
-      "Submarine", "Supermarket"
-    ];
+    allPossibleLocations.value = [];
   }
 };
 
@@ -757,7 +747,6 @@ const sortedPlayers = computed(() => {
 // Handle image error
 const handleImageError = (event: Event) => {
   const target = event.target as HTMLImageElement;
-  // Set a placeholder image
   target.src = '/images/locations/placeholder.png';
 };
 
