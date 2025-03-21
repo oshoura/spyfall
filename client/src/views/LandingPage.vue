@@ -100,6 +100,7 @@ onMounted(() => {
   const codeParam = route.query.code
   if (codeParam && typeof codeParam === 'string') {
     partyCode.value = codeParam
+    document.getElementById('join-name')?.focus()
   }
 })
 
