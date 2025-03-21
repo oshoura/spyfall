@@ -29,6 +29,11 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.status(200).send('Spyfall game server alive');
+});
+
 // API endpoints for getting game data
 app.get('/api/locations', (req, res) => {
   const locationPacks = require('./src/data/locations');
