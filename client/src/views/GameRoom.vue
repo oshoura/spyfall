@@ -296,7 +296,6 @@ import { useRouter } from 'vue-router'
 import socketService from '../services/socketService'
 import type { Player } from '../services/socketService'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   Dialog,
   DialogContent,
@@ -334,13 +333,6 @@ const currentLocation = computed(() => gameState.value?.location || '')
 const isSpy = computed(() => gameState.value?.isSpy || false)
 const gamePhase = computed(() => gameState.value?.state || 'playing')
 const isHost = computed(() => gameState.value?.hostId === playerId.value)
-const hasVoted = computed(() => {
-  const currentPlayerId = playerId.value;
-  if (!currentPlayerId) return false;
-  
-  const player = players.value.find(p => p.id === currentPlayerId);
-  return player?.hasVoted || false;
-})
 
 // Add this interface for the voting results type
 interface VotingResults {
@@ -393,16 +385,6 @@ const convertToVotingResults = (rawResults: any): VotingResults => {
 const votingResults = computed<VotingResults | null>(() => {
   if (!gameState.value?.results) return null;
   return convertToVotingResults(gameState.value.results);
-});
-
-const locationImage = computed(() => {
-  if (!currentLocation.value || isSpy.value) return null;
-  
-  // Try to find the pack that contains this location
-  const packId = findPackForLocation(currentLocation.value);
-  
-  const sanitizedName = currentLocation.value.toLowerCase().replace(/[^a-z0-9]/g, '-');
-  return `/images/locations/${packId}/${sanitizedName}.png`;
 });
 
 // Format time remaining in MM:SS format
@@ -599,31 +581,6 @@ const currentPlayer = computed(() => {
   return players.value.find(p => p.id === currentPlayerId.value);
 })
 
-// End turn
-const endTurn = async () => {
-  try {
-    isLoading.value = true
-    errorMessage.value = ''
-    
-    await socketService.endTurn()
-    
-    // Find next player - but don't set the currentPlayerId directly
-    const currentIndex = players.value.findIndex(player => player.id === currentPlayerId.value)
-    const nextIndex = (currentIndex + 1) % players.value.length
-    
-    toast({
-      title: "Turn ended",
-      description: `It's now ${players.value[nextIndex].name}'s turn`,
-      duration: 3000,
-    })
-  } catch (error) {
-    console.error('Error ending turn:', error)
-    errorMessage.value = error instanceof Error ? error.message : 'Failed to end turn'
-  } finally {
-    isLoading.value = false
-  }
-}
-
 // Vote for a player
 const votePlayer = async (targetId: string) => {
   // Get current player info
@@ -683,7 +640,7 @@ const returnToLobby = async () => {
   }
 }
 
-function findPackForLocation(locationName: string): string {
+function findPackForLocation(): string {
   // If we have location packs in the game state
   const packs = gameState.value?.locationPacks || [];
   
@@ -711,7 +668,7 @@ const submitSpyGuess = async () => {
     isLoading.value = true
     errorMessage.value = ''
     
-    const result = await socketService.makeSpyGuess(spyGuess.value)
+    await socketService.makeSpyGuess(spyGuess.value)
     
     showSpyGuessModal.value = false
     spyGuess.value = ''
@@ -739,7 +696,7 @@ const getLocationImage = (locationName: string): string => {
   if (!locationName) return '';
   
   // Try to find the pack that contains this location
-  const packId = findPackForLocation(locationName);
+  const packId = findPackForLocation();
   
   const sanitizedName = locationName.toLowerCase().replace(/[^a-z0-9]/g, '-');
   return `/images/locations/${packId}/${sanitizedName}.png`;

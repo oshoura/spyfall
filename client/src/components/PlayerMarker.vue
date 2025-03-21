@@ -150,24 +150,6 @@ const hasCurrentUserVotedFor = (playerId: string): boolean => {
   return currentPlayer?.votedFor === playerId;
 };
 
-const getStarredPlayers = computed(() => {
-  return players.value
-    .filter(player => player.status === 'starred')
-    .map(player => player.id);
-});
-
-const getNormalPlayers = computed(() => {
-  return players.value
-    .filter(player => player.status === 'normal')
-    .map(player => player.id);
-});
-
-const getScratchedPlayers = computed(() => {
-  return players.value
-    .filter(player => player.status === 'scratched')
-    .map(player => player.id);
-});
-
 // Method to get sorted players for the modal
 const getSortedPlayersForSelection = computed(() => {
   // First starred, then normal, then scratched
