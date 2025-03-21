@@ -10,15 +10,31 @@
         <div class="flex flex-col justify-between items-center gap-3">
           <div class="flex items-center justify-between w-full">
             <div class="text-xl font-bold text-gray-800">Round {{ gameState?.round || 1 }}</div>
-            <Button 
-              v-if="isHost && isPlayingPhase" 
-              @click="endRoundEarly" 
-              variant="destructive" 
-              size="sm"
-              class="ml-2"
-            >
-              End Round
-            </Button>
+            <div class="flex items-center gap-2">
+              <Button 
+                @click="toggleInfoVisibility" 
+                variant="ghost" 
+                size="sm"
+                class="flex items-center gap-1"
+                :title="infoHidden ? 'Show sensitive identity information' : 'Hide sensitive identity information'"
+              >
+                <span v-if="infoHidden">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye-off"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"></path><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path><line x1="2" x2="22" y1="2" y2="22"></line></svg>
+                </span>
+                <span v-else>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </span>
+                <span class="text-xs">{{ infoHidden ? 'Show Identity' : 'Hide Identity' }}</span>
+              </Button>
+              <Button 
+                v-if="isHost && isPlayingPhase" 
+                @click="endRoundEarly" 
+                variant="destructive" 
+                size="sm"
+              >
+                End Round
+              </Button>
+            </div>
           </div>
           
           <!-- Timer -->
@@ -31,11 +47,14 @@
             <span>No Time Limit</span>
           </div>
           
-          <div v-if="!isSpy" class="text-lg">
+          <div v-if="!isSpy && !infoHidden" class="text-lg">
             Location: <span class="font-bold text-orange-600">{{ currentLocation }}</span>
           </div>
-          <div v-else class="text-lg font-bold text-orange-600">
+          <div v-else-if="isSpy && !infoHidden" class="text-lg font-bold text-orange-600">
             You are the spy! Try to figure out the location.
+          </div>
+          <div v-else class="text-lg font-medium text-gray-400">
+            <span class="italic">[ Information hidden ]</span>
           </div>
         </div>
       </div>
@@ -51,8 +70,9 @@
           <!-- Use PlayerMarker component for players during playing/voting phases -->
           <div v-if="canVote">
             <p class="text-sm text-gray-600 mb-3">
-              <span v-if="!isSpy">Click to mark players as suspicious. Click the vote button next to a player to vote for them as the spy.</span>
-              <span v-else>You can vote for a player to maintain your cover, but be careful who you choose!</span>
+              <span v-if="!isSpy && !infoHidden">Click to mark players as suspicious. Click the vote button next to a player to vote for them as the spy.</span>
+              <span v-else-if="isSpy && !infoHidden">You can vote for a player to maintain your cover, but be careful who you choose!</span>
+              <span v-else>Click to mark players or vote for them.</span>
             </p>
             <PlayerMarker 
               :gamePlayers="players" 
@@ -114,12 +134,12 @@
         </div>
         
         <!-- Possible Locations for Spies -->
-        <div v-if="isSpy" class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+        <div v-if="isSpy && !infoHidden" class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
           <div class="flex justify-between items-center mb-3">
             <h2 class="text-lg font-bold text-gray-800">Possible Locations</h2>
             <Button 
               v-if="isSpy" 
-              @click="showSpyGuessModal = true" 
+              @click="handleSpyGuessClick" 
               variant="destructive" 
               size="sm"
             >
@@ -781,6 +801,34 @@ const endRoundEarly = async () => {
     errorMessage.value = error instanceof Error ? error.message : 'Failed to end round early'
   } finally {
     isLoading.value = false
+  }
+}
+
+// Add a new ref for tracking identity visibility
+const infoHidden = ref(localStorage.getItem('spyfall-identity-hidden') === 'true')
+
+// Toggle identity visibility
+const toggleInfoVisibility = () => {
+  infoHidden.value = !infoHidden.value
+  
+  // If hiding identity and spy guess modal is open, close it
+  if (infoHidden.value && showSpyGuessModal.value) {
+    showSpyGuessModal.value = false
+  }
+}
+
+// Handler for spy guess button that checks if info is hidden
+const handleSpyGuessClick = () => {
+  if (infoHidden.value) {
+    // If info is hidden, tell the user they need to show info first
+    toast({
+      title: "Identity Hidden",
+      description: "You need to show your identity information before making a guess",
+      variant: "destructive",
+      duration: 3000,
+    })
+  } else {
+    showSpyGuessModal.value = true
   }
 }
 </script> 
