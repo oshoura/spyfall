@@ -48,9 +48,12 @@
             <h2 class="text-lg font-bold text-gray-800">Players</h2>
           </div>
           
-          <!-- Use PlayerMarker component for non-spies -->
-          <div v-if="!isSpy && gamePhase === 'playing'">
-            <p class="text-sm text-gray-600 mb-3">Click to mark players as suspicious. Click the vote button next to a player to vote for them as the spy.</p>
+          <!-- Use PlayerMarker component for players during playing/voting phases -->
+          <div v-if="gameState?.state === 'playing' || gameState?.state === 'voting'">
+            <p class="text-sm text-gray-600 mb-3">
+              <span v-if="!isSpy">Click to mark players as suspicious. Click the vote button next to a player to vote for them as the spy.</span>
+              <span v-else>You can vote for a player to maintain your cover, but be careful who you choose!</span>
+            </p>
             <PlayerMarker 
               :gamePlayers="players" 
               :currentPlayerId="currentPlayerId || ''" 
@@ -62,7 +65,7 @@
             />
           </div>
           
-          <!-- Default player list for spies or other phases -->
+          <!-- Default player list for other phases -->
           <div v-else class="grid gap-3">
             <div 
               v-for="player in players" 

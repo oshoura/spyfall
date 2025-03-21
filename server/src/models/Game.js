@@ -317,17 +317,24 @@ class Game {
     }
     this.votes.set(targetId, this.votes.get(targetId) + 1);
     
-    // If all players have voted, end the voting phase
-    let allVoted = true;
+    // Check if all non-spy players have voted
+    let allNonSpyPlayersVoted = true;
+    let spyId = null;
     
-    for (const player of this.players.values()) {
+    for (const [playerId, player] of this.players.entries()) {
+      if (player.isSpy) {
+        spyId = playerId;
+        continue; // Skip checking if the spy has voted
+      }
+      
       if (!player.hasVoted) {
-        allVoted = false;
+        allNonSpyPlayersVoted = false;
         break;
       }
     }
     
-    if (allVoted && this.players.size > 1) {
+    // End the voting phase if all non-spy players have voted and there are at least 2 players
+    if (allNonSpyPlayersVoted && this.players.size > 1) {
       this.endVoting();
     }
     
