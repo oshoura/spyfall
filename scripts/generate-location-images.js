@@ -12,7 +12,7 @@ const axios = require('axios');
 const locationPacks = require('../server/src/data/locations');
 
 const OUTPUT_DIR = path.join(__dirname, '../client/public/images/locations');
-const IMAGE_SIZE = '1024x1024'; // Options: 256x256, 512x512, 1024x1024
+const IMAGE_SIZE = '1024x1024'; // Options: 256x256, 512x512, 1024x1024 
 const IMAGE_STYLE = 'natural'; // Options: natural, vivid
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
