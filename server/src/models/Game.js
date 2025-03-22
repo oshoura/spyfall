@@ -344,13 +344,16 @@ class Game {
   }
 
   /**
-   * End the voting phase and determine results
+   * Calculate final game results for any end-game scenario
+   * @param {string} reason - Reason for game ending ('voting', 'time-up', 'host-ended', 'spy-guess')
+   * @param {string|null} spyGuess - The spy's guess for the location (if applicable)
+   * @returns {Object} - Complete game results
    */
-  endVoting() {
-    this.state = GameState.RESULTS;
-    this.roundEndTime = Date.now();
+  calculateGameResults(reason = 'voting', spyGuess = null) {
+    // Find the spy
+    let spyId = this.getSpyId();
     
-    // Determine the most voted player
+    // Determine most voted player (if any votes were cast)
     let mostVotedId = null;
     let maxVotes = -1;
     
@@ -361,27 +364,57 @@ class Game {
       }
     }
     
-    // Find the spy
-    let spyId = null;
-    for (const [playerId, player] of this.players.entries()) {
-      if (player.isSpy) {
-        spyId = playerId;
-        break;
-      }
+    // Set game to results state and record end time
+    this.state = GameState.RESULTS;
+    this.roundEndTime = Date.now();
+    
+    // Determine outcome based on reason
+    let spyWon = false;
+    let spyGuessedCorrectly = false;
+    
+    if (reason === 'spy-guess') {
+      // Spy wins if their guess is correct
+      spyGuessedCorrectly = spyGuess && spyGuess.toLowerCase() === this.currentLocation.toLowerCase();
+      spyWon = spyGuessedCorrectly;
+    } else if (reason === 'voting') {
+      // Spy wins if they weren't the most voted, or if no votes were cast
+      spyWon = mostVotedId !== spyId;
+    } else if (reason === 'time-up' || reason === 'host-ended') {
+      // If time ran out or host ended, spy wins UNLESS they were the most voted
+      spyWon = mostVotedId !== spyId;
     }
     
-    // Determine if the spy won
-    const spyWon = mostVotedId !== spyId;
+    // Create comprehensive results object
+    const results = {
+      // Basic info
+      reason,
+      spyId,
+      location: this.currentLocation,
+      
+      // Voting results
+      votes: this.votes,
+      mostVotedId,
+      hasVotes: this.votes.size > 0,
+      
+      // Outcome
+      spyWon,
+      
+      // Spy guess info (if applicable)
+      spyGuess,
+      spyGuessedCorrectly
+    };
     
     // Store results for getStateForPlayer to use
-    this.results = {
-      votes: this.votes,
-      spyId,
-      mostVotedId,
-      spyWon,
-      location: this.currentLocation,
-      spyGuess: this.spyGuess
-    };
+    this.results = results;
+    
+    return results;
+  }
+
+  /**
+   * End the voting phase and determine results
+   */
+  endVoting() {
+    this.calculateGameResults('voting');
   }
 
   /**
@@ -404,28 +437,14 @@ class Game {
       return { success: false, error: 'Only the spy can make a location guess' };
     }
     
-    this.state = GameState.RESULTS;
-    this.spyGuess = locationGuess;
-    this.roundEndTime = Date.now();
-    
-    const isCorrect = locationGuess.toLowerCase() === this.currentLocation.toLowerCase();
-    
-    // Store results
-    this.results = {
-      votes: this.votes,
-      spyId: playerId,
-      mostVotedId: null,
-      spyWon: isCorrect,
-      location: this.currentLocation,
-      spyGuess: locationGuess,
-      spyGuessedCorrectly: isCorrect
-    };
+    // Calculate results with spy guess
+    const results = this.calculateGameResults('spy-guess', locationGuess);
     
     this.lastUpdateTime = Date.now();
     
     return { 
       success: true, 
-      isCorrect,
+      isCorrect: results.spyGuessedCorrectly,
       actualLocation: this.currentLocation
     };
   }
@@ -514,41 +533,10 @@ class Game {
 
   /**
    * End the round early due to special circumstances
-   * @param {string} reason - Reason for ending the round early (e.g., 'spy-left', 'time-up')
+   * @param {string} reason - Reason for ending the round early (e.g., 'spy-left', 'time-up', 'host-ended')
    */
   endRoundEarly(reason) {
-    this.state = GameState.RESULTS;
-    this.roundEndTime = Date.now();
-    
-    // Find the spy
-    let spyId = this.getSpyId();
-    
-    // Determine most voted player (if any votes were cast)
-    let mostVotedId = null;
-    let maxVotes = -1;
-    
-    for (const [playerId, voteCount] of this.votes.entries()) {
-      if (voteCount > maxVotes) {
-        maxVotes = voteCount;
-        mostVotedId = playerId;
-      }
-    }
-    
-    // Determine if the spy won (always true for time-up, host-ended, and spy-left)
-    const spyWon = reason === 'spy-left' || reason === 'time-up' || reason === 'host-ended';
-    
-    // Store results for getStateForPlayer to use
-    this.results = {
-      votes: this.votes,
-      spyId,
-      mostVotedId,
-      spyWon,
-      location: this.currentLocation,
-      spyGuess: this.spyGuess,
-      reason
-    };
-    
-    this.lastUpdateTime = Date.now();
+    this.calculateGameResults(reason);
   }
 
   /**

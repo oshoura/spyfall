@@ -20,16 +20,25 @@ function initializeSocketController(io) {
         // Only send timer updates when time is up, not on every check
         if (timerStatus.isTimeUp) {
           // Send results to each player
-          for (const playerId of game.players.keys()) {
-            const playerState = game.getStateForPlayer(playerId);
-            io.to(playerId).emit('round-ended', playerState);
-          }
-          
-          io.to(game.id).emit('time-up');
+          broadcastGameResults(io, game, 'time-up');
         }
       }
     }
   }, 1000);
+  
+  /**
+   * Helper function to broadcast game results to all players
+   * @param {Server} io - Socket.io server
+   * @param {Game} game - Game instance
+   * @param {string} reason - Reason for game end
+   */
+  const broadcastGameResults = (io, game, reason = 'voting') => {
+    // Send the results to each player
+    for (const playerId of game.players.keys()) {
+      const playerState = game.getStateForPlayer(playerId);
+      io.to(playerId).emit('round-ended', playerState);
+    }
+  };
   
   // Handle socket connections
   io.on('connection', (socket) => {
@@ -294,7 +303,7 @@ function initializeSocketController(io) {
         });
       }
       
-      // Notify all players about the spy's guess and the result
+      // Broadcast to all players that the spy made a guess
       io.to(game.id).emit('spy-guessed', {
         playerId: socket.id,
         locationGuess,
@@ -302,11 +311,8 @@ function initializeSocketController(io) {
         actualLocation: result.actualLocation
       });
       
-      // Send results to each player
-      for (const playerId of game.players.keys()) {
-        const playerState = game.getStateForPlayer(playerId);
-        io.to(playerId).emit('round-ended', playerState);
-      }
+      // Broadcast the game results
+      broadcastGameResults(io, game, 'spy-guess');
       
       callback({
         success: true,
@@ -345,11 +351,7 @@ function initializeSocketController(io) {
       
       // If all non-spy players have voted, transition to results
       if (game.state === GameState.RESULTS) {
-        // Send results to each player
-        for (const playerId of game.players.keys()) {
-          const playerState = game.getStateForPlayer(playerId);
-          io.to(playerId).emit('round-ended', playerState);
-        }
+        broadcastGameResults(io, game, 'voting');
       }
       
       callback({
@@ -478,11 +480,8 @@ function initializeSocketController(io) {
       // End the round early
       game.endRoundEarly('host-ended');
       
-      // Send results to each player
-      for (const playerId of game.players.keys()) {
-        const playerState = game.getStateForPlayer(playerId);
-        io.to(playerId).emit('round-ended', playerState);
-      }
+      // Broadcast the game results
+      broadcastGameResults(io, game, 'host-ended');
       
       callback({
         success: true
@@ -512,10 +511,8 @@ function initializeSocketController(io) {
           if ((game.state === GameState.PLAYING || game.state === GameState.SPY_GUESSING) && playerId === game.getSpyId()) {
             game.endRoundEarly('spy-left');
             
-            // Send updated game state to all players
-            for (const pid of game.players.keys()) {
-              io.to(pid).emit('round-ended', game.getStateForPlayer(pid));
-            }
+            // Broadcast the game results
+            broadcastGameResults(io, game, 'spy-left');
           }
         }
         
