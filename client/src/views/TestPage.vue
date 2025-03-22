@@ -220,16 +220,16 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  height: 100vh;
-  width: 100vw;
+  justify-content: flex-start;
+  min-height: 100vh;
+  width: 100%;
   background: linear-gradient(135deg, #1e3c72, #2a5298);
   color: white;
   padding: 1rem;
   position: relative;
-  overflow: hidden;
   box-sizing: border-box;
   margin: 0;
+  overflow-y: auto;
 }
 
 .fullscreen-button {
@@ -254,71 +254,71 @@ export default {
 .loading {
   font-size: 2rem;
   text-align: center;
+  margin-top: 40vh;
 }
 
 .prayer-times-container {
   width: 100%;
   max-width: 100%;
-  height: 100%;
+  padding-bottom: 1rem;
   display: flex;
   flex-direction: column;
 }
 
 h1 {
   text-align: center;
-  margin: 0 0 1.5rem 0;
-  font-size: 2.5rem;
+  margin: 2rem 0 1rem 0;
+  font-size: 2.2rem;
 }
 
 .next-prayer {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 12px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
   text-align: center;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
 .next-prayer h2 {
-  margin-bottom: 0.5rem;
-  font-size: 1.8rem;
+  margin-bottom: 0.3rem;
+  font-size: 1.5rem;
 }
 
 .next-prayer .prayer-name {
-  font-size: 2.5rem;
+  font-size: 2rem;
   font-weight: bold;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.3rem;
 }
 
 .next-time {
-  font-size: 2rem;
+  font-size: 1.5rem;
   font-weight: bold;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.3rem;
 }
 
 .countdown-label {
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   font-weight: bold;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.3rem;
 }
 
 .countdown {
-  font-size: 4rem;
+  font-size: 3rem;
   font-family: monospace;
   letter-spacing: 2px;
 }
 
 .all-prayers {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1rem;
-  flex: 1;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.8rem;
 }
 
 .prayer-card {
   background: rgba(255, 255, 255, 0.05);
   border-radius: 8px;
-  padding: 1.5rem;
+  padding: 1rem;
   text-align: center;
   transition: all 0.3s ease;
 }
@@ -330,13 +330,34 @@ h1 {
 }
 
 .prayer-card .prayer-name {
-  font-size: 1.2rem;
-  margin-bottom: 0.5rem;
+  font-size: 1rem;
+  margin-bottom: 0.4rem;
 }
 
 .prayer-card .prayer-time {
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   font-weight: bold;
+}
+
+/* Media query for small screens */
+@media (max-height: 700px) {
+  h1 {
+    margin: 1rem 0 0.5rem 0;
+    font-size: 1.8rem;
+  }
+  
+  .next-prayer {
+    padding: 0.8rem;
+    margin-bottom: 0.8rem;
+  }
+  
+  .countdown {
+    font-size: 2.5rem;
+  }
+  
+  .prayer-card {
+    padding: 0.8rem;
+  }
 }
 
 .modal {
