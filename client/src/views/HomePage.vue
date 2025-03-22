@@ -8,11 +8,11 @@
         <h1 class="text-3xl md:text-5xl lg:text-6xl font-bold text-center mb-3 md:mb-4 tracking-tight">Spyfall</h1>
         <p class="text-lg md:text-xl lg:text-2xl text-center text-stone-300 max-w-2xl mb-8 md:mb-10">Find the spy before the spy finds you</p>
         <div class="flex flex-col sm:flex-row gap-4 w-full max-w-md">
+          <RouterLink to="/play" class="text-lg font-bold py-6">
           <Button asChild variant="orange" size="lg" class="w-full">
-            <RouterLink to="/play" class="text-lg font-bold py-6">
               Play Now
-            </RouterLink>
-          </Button>
+            </Button>
+          </RouterLink>
           <Dialog v-model:open="headerDialogOpen">
             <DialogTrigger asChild>
               <Button variant="outline" size="lg" class="border-white text-slate-700 border-2 hover:bg-white/10 hover:text-slate-100 w-full">
