@@ -11,13 +11,15 @@
       <div class="next-prayer">
         <h2>Next Prayer</h2>
         <div class="prayer-name">{{ nextPrayer.name }}</div>
+        <div v-if="nextPrayer.time" class="next-time">{{ formatNextPrayerTime() }}</div>
+        <div class="countdown-label">Time Remaining</div>
         <div class="countdown">{{ countdownDisplay }}</div>
       </div>
       <div class="all-prayers">
         <div v-for="(time, prayer) in prayerTimes" :key="prayer" 
              :class="['prayer-card', nextPrayer.name.toLowerCase() === prayer.toLowerCase() ? 'next' : '']">
           <div class="prayer-name">{{ formatPrayerName(prayer) }}</div>
-          <div class="prayer-time">{{ time }}</div>
+          <div class="prayer-time">{{ formatTime(time) }}</div>
         </div>
       </div>
     </div>
@@ -90,12 +92,31 @@ export default {
     },
     async fetchPrayerTimes() {
       try {
+        // Get today's date in DD-MM-YYYY format
+        const today = new Date();
+        const day = String(today.getDate()).padStart(2, '0');
+        const month = String(today.getMonth() + 1).padStart(2, '0'); // January is 0
+        const year = today.getFullYear();
+        const formattedDate = `${day}-${month}-${year}`;
+        
         const response = await fetch(
-          "https://api.aladhan.com/v1/timings/01-01-2025?latitude=51.5194682&longitude=-0.1360365&method=3&shafaq=general&tune=5%2C3%2C5%2C7%2C9%2C-1%2C0%2C8%2C-6&timezonestring=UTC&calendarMethod=UAQ",
+          `https://api.aladhan.com/v1/timings/${formattedDate}?latitude=42.271070&longitude=-71.291529&method=2&shafaq=general&timezonestring=America/New_York&calendarMethod=UAQ`,
           { headers: { accept: "application/json" } }
         );
         const data = await response.json();
-        this.prayerTimes = data.data.timings;
+        console.log(data);
+        
+        // Filter out unwanted prayer times
+        const filteredTimes = {};
+        const wantedPrayers = ['Fajr', 'Sunrise', 'Dhuhr', 'Asr', 'Maghrib', 'Isha', 'Sunset'];
+        
+        for (const prayer of wantedPrayers) {
+          if (data.data.timings[prayer]) {
+            filteredTimes[prayer] = data.data.timings[prayer];
+          }
+        }
+        
+        this.prayerTimes = filteredTimes;
         this.loading = false;
       } catch (error) {
         console.error("Error fetching prayer times:", error);
@@ -117,6 +138,16 @@ export default {
         'Lastthird': 'Last Third'
       };
       return formatted[name] || name;
+    },
+    formatTime(time24h) {
+      const [hours24, minutes] = time24h.split(':').map(Number);
+      
+      let hours12 = hours24 % 12;
+      if (hours12 === 0) hours12 = 12;
+      
+      const ampm = hours24 >= 12 ? 'PM' : 'AM';
+      
+      return `${hours12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
     },
     findNextPrayer() {
       const now = new Date();
@@ -166,6 +197,19 @@ export default {
       const seconds = Math.floor((this.countdown % (1000 * 60)) / 1000);
       
       this.countdownDisplay = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    },
+    formatNextPrayerTime() {
+      if (!this.nextPrayer.time) return '';
+      
+      const hours = this.nextPrayer.time.getHours();
+      const minutes = this.nextPrayer.time.getMinutes();
+      
+      let hours12 = hours % 12;
+      if (hours12 === 0) hours12 = 12;
+      
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      
+      return `${hours12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
     }
   }
 }
@@ -177,11 +221,15 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
+  height: 100vh;
+  width: 100vw;
   background: linear-gradient(135deg, #1e3c72, #2a5298);
   color: white;
-  padding: 2rem;
+  padding: 1rem;
   position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+  margin: 0;
 }
 
 .fullscreen-button {
@@ -210,45 +258,61 @@ export default {
 
 .prayer-times-container {
   width: 100%;
-  max-width: 1000px;
+  max-width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 h1 {
   text-align: center;
-  margin-bottom: 2rem;
-  font-size: 3rem;
+  margin: 0 0 1.5rem 0;
+  font-size: 2.5rem;
 }
 
 .next-prayer {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 12px;
-  padding: 2rem;
-  margin-bottom: 2rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
   text-align: center;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
 .next-prayer h2 {
-  margin-bottom: 1rem;
-  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  font-size: 1.8rem;
 }
 
 .next-prayer .prayer-name {
-  font-size: 3rem;
+  font-size: 2.5rem;
   font-weight: bold;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.next-time {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.countdown-label {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
 }
 
 .countdown {
-  font-size: 5rem;
+  font-size: 4rem;
   font-family: monospace;
   letter-spacing: 2px;
 }
 
 .all-prayers {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 1rem;
+  flex: 1;
 }
 
 .prayer-card {
