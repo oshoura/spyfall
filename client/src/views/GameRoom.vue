@@ -242,7 +242,7 @@
     <DialogContent class="sm:max-w-md">
       <DialogHeader>
         <DialogTitle class="text-xl">
-          <span v-if="votingResults?.spyWon" class="text-orange-600">The Spy Won!</span>
+          <span v-if="votingResults?.spyWon || votingResults?.reason === 'time-up' || votingResults?.reason === 'host-ended'" class="text-orange-600">The Spy Won!</span>
           <span v-else class="text-green-600">The Spy Was Caught!</span>
         </DialogTitle>
         <DialogDescription class="text-base">
@@ -275,28 +275,15 @@
         
         <!-- Time-up scenario -->
         <div v-if="votingResults.reason === 'time-up'" class="p-4 rounded-lg bg-blue-50 border border-blue-100">
-          <p v-if="votingResults.mostVotedId === votingResults.spyId" class="text-blue-800">
-            Time ran out, but the group correctly identified the spy!
-          </p>
-          <p v-else class="text-blue-800">
+          <p class="text-blue-800">
             Time ran out! The spy wins by default.
           </p>
         </div>
         
         <!-- Host ended round early scenario -->
         <div v-else-if="votingResults.reason === 'host-ended'" class="p-4 rounded-lg bg-blue-50 border border-blue-100">
-          <p v-if="votingResults.mostVotedId === votingResults.spyId" class="text-blue-800">
-            The host ended the round early, but the group correctly identified the spy!
-          </p>
-          <p v-else class="text-blue-800">
-            The host ended the round early. The spy wins by default.
-          </p>
-        </div>
-        
-        <!-- Spy left scenario -->
-        <div v-else-if="votingResults.reason === 'spy-left'" class="p-4 rounded-lg bg-blue-50 border border-blue-100">
           <p class="text-blue-800">
-            The spy left the game before the round ended.
+            The host ended the round early. The spy wins by default.
           </p>
         </div>
         
@@ -313,8 +300,8 @@
           </p>
         </div>
         
-        <!-- Voting scenario - regular voting end -->
-        <div v-else-if="votingResults.hasVotes" class="p-4 rounded-lg" :class="votingResults.spyWon ? 'bg-orange-50 border border-orange-100' : 'bg-green-50 border border-green-100'">
+        <!-- Voting scenario -->
+        <div v-else class="p-4 rounded-lg" :class="votingResults.spyWon ? 'bg-orange-50 border border-orange-100' : 'bg-green-50 border border-green-100'">
           <div class="flex items-center justify-between mb-2">
             <div>
               <div class="text-sm text-gray-500">Most voted player</div>
@@ -330,27 +317,27 @@
           <p v-else class="text-green-800 mt-2 mb-4">
             Great job! The group correctly identified the spy and wins the round!
           </p>
-        </div>
-        
-        <!-- Show vote distribution -->
-        <div v-if="votingResults.votes && Object.keys(votingResults.votes).length > 0" class="mt-4 pt-3 border-t border-gray-200">
-          <h4 class="text-sm font-medium text-gray-700 mb-2">Vote Breakdown</h4>
-          <div class="space-y-2">
-            <div 
-              v-for="player in sortedPlayers" 
-              :key="player.id" 
-              class="flex justify-between items-center py-1 px-2 rounded"
-              :class="player.id === votingResults.spyId ? 'bg-orange-50' : ''"
-            >
-              <div class="flex items-center">
-                <span>{{ player.name }}</span>
-                <span v-if="player.id === votingResults.spyId" class="ml-2 text-xs bg-orange-500 text-white px-2 py-0.5 rounded-full">Spy</span>
-              </div>
-              <div class="flex items-center">
-                <div v-if="getVoteCount(player.id) > 0" class="text-xs bg-purple-500 text-white px-2 py-0.5 rounded-full">
-                  {{ getVoteCount(player.id) }} vote{{ getVoteCount(player.id) > 1 ? 's' : '' }}
+          
+          <!-- Show vote distribution -->
+          <div v-if="votingResults.votes" class="mt-4 pt-3 border-t border-gray-200">
+            <h4 class="text-sm font-medium text-gray-700 mb-2">Vote Breakdown</h4>
+            <div class="space-y-2">
+              <div 
+                v-for="player in sortedPlayers" 
+                :key="player.id" 
+                class="flex justify-between items-center py-1 px-2 rounded"
+                :class="player.id === votingResults.spyId ? 'bg-orange-50' : ''"
+              >
+                <div class="flex items-center">
+                  <span>{{ player.name }}</span>
+                  <span v-if="player.id === votingResults.spyId" class="ml-2 text-xs bg-orange-500 text-white px-2 py-0.5 rounded-full">Spy</span>
                 </div>
-                <div v-else class="text-xs text-gray-500">No votes</div>
+                <div class="flex items-center">
+                  <div v-if="getVoteCount(player.id) > 0" class="text-xs bg-purple-500 text-white px-2 py-0.5 rounded-full">
+                    {{ getVoteCount(player.id) }} vote{{ getVoteCount(player.id) > 1 ? 's' : '' }}
+                  </div>
+                  <div v-else class="text-xs text-gray-500">No votes</div>
+                </div>
               </div>
             </div>
           </div>
@@ -417,7 +404,6 @@ const isHost = computed(() => gameState.value?.hostId === playerId.value)
 // Helper computed properties for phase checks
 const isPlayingPhase = computed(() => gamePhase.value === 'playing')
 const isVotingPhase = computed(() => gamePhase.value === 'voting')
-const isResultsPhase = computed(() => gamePhase.value === 'results')
 const canVote = computed(() => isPlayingPhase.value || isVotingPhase.value)
 
 // Add this interface for the voting results type
@@ -430,7 +416,6 @@ interface VotingResults {
   spyGuessedCorrectly?: boolean;
   reason?: string;
   votes: Record<string, number>; // Record object with player IDs as keys and vote counts as values
-  hasVotes?: boolean; // Whether any votes were cast
 }
 
 // Helper function to convert the results from the server to our VotingResults type
@@ -448,7 +433,6 @@ const convertToVotingResults = (rawResults: any): VotingResults => {
   if (rawResults.spyGuess) result.spyGuess = rawResults.spyGuess;
   if (rawResults.spyGuessedCorrectly) result.spyGuessedCorrectly = rawResults.spyGuessedCorrectly;
   if (rawResults.reason) result.reason = rawResults.reason;
-  if (rawResults.hasVotes !== undefined) result.hasVotes = rawResults.hasVotes;
   
   // Convert votes from server format to a simple Record
   if (rawResults.votes) {
@@ -463,11 +447,6 @@ const convertToVotingResults = (rawResults: any): VotingResults => {
           result.votes[key] = value;
         });
       }
-    }
-    
-    // Set hasVotes based on votes if not explicitly provided
-    if (result.hasVotes === undefined) {
-      result.hasVotes = Object.keys(result.votes).length > 0;
     }
   }
   
