@@ -242,7 +242,10 @@
     <DialogContent class="sm:max-w-md">
       <DialogHeader>
         <DialogTitle class="text-xl">
-          <span v-if="votingResults?.spyWon || votingResults?.reason === 'time-up' || votingResults?.reason === 'host-ended'" class="text-orange-600">The Spy Won!</span>
+          <span v-if="(votingResults?.spyWon && votingResults?.reason !== 'time-up' && votingResults?.reason !== 'host-ended') || 
+                      ((votingResults?.reason === 'time-up' || votingResults?.reason === 'host-ended') && 
+                       votingResults?.mostVotedId !== votingResults?.spyId)" 
+                class="text-orange-600">The Spy Won!</span>
           <span v-else class="text-green-600">The Spy Was Caught!</span>
         </DialogTitle>
         <DialogDescription class="text-base">
@@ -275,14 +278,20 @@
         
         <!-- Time-up scenario -->
         <div v-if="votingResults.reason === 'time-up'" class="p-4 rounded-lg bg-blue-50 border border-blue-100">
-          <p class="text-blue-800">
+          <p v-if="votingResults.mostVotedId === votingResults.spyId" class="text-blue-800">
+            Time ran out, but the group correctly identified the spy!
+          </p>
+          <p v-else class="text-blue-800">
             Time ran out! The spy wins by default.
           </p>
         </div>
         
         <!-- Host ended round early scenario -->
         <div v-else-if="votingResults.reason === 'host-ended'" class="p-4 rounded-lg bg-blue-50 border border-blue-100">
-          <p class="text-blue-800">
+          <p v-if="votingResults.mostVotedId === votingResults.spyId" class="text-blue-800">
+            The host ended the round early, but the group correctly identified the spy!
+          </p>
+          <p v-else class="text-blue-800">
             The host ended the round early. The spy wins by default.
           </p>
         </div>
