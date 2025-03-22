@@ -1,6 +1,6 @@
 <template>
   <div class="tutorial-images">
-    <svg v-if="type === 'create-party'" viewBox="0 0 800 400" class="tutorial-svg" width="100%" preserveAspectRatio="xMidYMid meet">
+    <svg v-if="type === 'create-party'" viewBox="0 0 800 400" class="tutorial-svg" preserveAspectRatio="xMidYMid meet">
       <rect width="800" height="400" fill="#f8f9fa" />
       <rect x="100" y="50" width="600" height="300" rx="8" fill="white" stroke="#dee2e6" />
       
@@ -24,7 +24,7 @@
       <text x="535" y="275" text-anchor="middle" font-size="16" fill="white">Join Party</text>
     </svg>
 
-    <svg v-else-if="type === 'location-packs'" viewBox="0 0 800 400" class="tutorial-svg" width="100%" preserveAspectRatio="xMidYMid meet">
+    <svg v-else-if="type === 'location-packs'" viewBox="0 0 800 400" class="tutorial-svg" preserveAspectRatio="xMidYMid meet">
       <rect width="800" height="400" fill="#f8f9fa" />
       <rect x="100" y="20" width="600" height="350" rx="8" fill="white" stroke="#dee2e6" />
       
@@ -63,7 +63,7 @@
       <text x="535" y="290" text-anchor="middle" font-size="12" fill="#64748b">Public, entertainment settings</text>
     </svg>
 
-    <svg v-else-if="type === 'start-game'" viewBox="0 0 800 400" class="tutorial-svg" width="100%" preserveAspectRatio="xMidYMid meet">
+    <svg v-else-if="type === 'start-game'" viewBox="0 0 800 400" class="tutorial-svg" preserveAspectRatio="xMidYMid meet">
       <rect width="800" height="400" fill="#f8f9fa" />
       <rect x="100" y="50" width="600" height="300" rx="8" fill="white" stroke="#dee2e6" />
       
@@ -94,7 +94,7 @@
       <text x="400" y="335" text-anchor="middle" font-size="16" fill="#f97316">Need 2 more players to start the game</text>
     </svg>
 
-    <svg v-else-if="type === 'asking-questions'" viewBox="0 0 800 400" class="tutorial-svg" width="100%" preserveAspectRatio="xMidYMid meet">
+    <svg v-else-if="type === 'asking-questions'" viewBox="0 0 800 400" class="tutorial-svg" preserveAspectRatio="xMidYMid meet">
       <rect width="800" height="400" fill="#f8f9fa" />
       <rect x="100" y="50" width="600" height="300" rx="8" fill="white" stroke="#dee2e6" />
       
@@ -124,7 +124,7 @@
       <text x="480" y="275" text-anchor="middle" font-size="12" fill="white">Host</text>
     </svg>
 
-    <svg v-else-if="type === 'voting'" viewBox="0 0 800 400" class="tutorial-svg" width="100%" preserveAspectRatio="xMidYMid meet">
+    <svg v-else-if="type === 'voting'" viewBox="0 0 800 400" class="tutorial-svg" preserveAspectRatio="xMidYMid meet">
       <rect width="800" height="400" fill="#f8f9fa" />
       <rect x="100" y="50" width="600" height="300" rx="8" fill="white" stroke="#dee2e6" />
       
@@ -152,7 +152,7 @@
       <text x="565" y="285" text-anchor="middle" font-size="14" fill="white">Vote</text>
     </svg>
 
-    <svg v-else-if="type === 'multiple-rounds'" viewBox="0 0 800 400" class="tutorial-svg" width="100%" preserveAspectRatio="xMidYMid meet">
+    <svg v-else-if="type === 'multiple-rounds'" viewBox="0 0 800 400" class="tutorial-svg" preserveAspectRatio="xMidYMid meet">
       <rect width="800" height="400" fill="#f8f9fa" />
       <!-- Results Dialog -->
       <rect x="150" y="50" width="500" height="300" rx="8" fill="white" stroke="#dee2e6" />
@@ -178,7 +178,7 @@
       <text x="400" y="355" text-anchor="middle" font-size="16" fill="white">Return to Lobby</text>
     </svg>
 
-    <svg v-else-if="type === 'make-move'" viewBox="0 0 800 400" class="tutorial-svg" width="100%" preserveAspectRatio="xMidYMid meet">
+    <svg v-else-if="type === 'make-move'" viewBox="0 0 800 400" class="tutorial-svg" preserveAspectRatio="xMidYMid meet">
       <rect width="800" height="400" fill="#f8f9fa" />
       <rect x="100" y="50" width="600" height="300" rx="8" fill="white" stroke="#dee2e6" />
       
@@ -206,7 +206,7 @@
       <rect x="410" y="295" width="210" height="50" rx="8" fill="white" stroke="#dee2e6" />
     </svg>
 
-    <svg v-else viewBox="0 0 800 400" class="tutorial-svg" width="100%" preserveAspectRatio="xMidYMid meet">
+    <svg v-else viewBox="0 0 800 400" class="tutorial-svg" preserveAspectRatio="xMidYMid meet">
       <rect width="800" height="400" fill="#f8f9fa" />
       <text x="400" y="200" text-anchor="middle" font-size="24" fill="#6c757d">Image placeholder</text>
     </svg>
@@ -222,16 +222,17 @@ defineProps<{
 <style scoped>
 .tutorial-images {
   width: 100%;
-  display: flex;
-  justify-content: center;
+  display: block;
+  overflow: hidden;
 }
 
 .tutorial-svg {
+  display: block;
   width: 100%;
-  min-width: 100%;
+  aspect-ratio: 2 / 1;
   height: auto;
+  max-height: 400px;
   border-radius: 8px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  flex-grow: 1;
 }
 </style> 
