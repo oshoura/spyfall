@@ -74,7 +74,9 @@
             Play Spyfall
           </RouterLink>
         </Button>
-        <p class="text-sm md:text-base text-white/70 mt-8 pt-8 border-t border-white/20">&copy; {{ new Date().getFullYear() }} Spyfall Game. All rights reserved.</p>
+        <p class="text-sm md:text-base text-white/70 mt-8 pt-8 border-t border-white/20">
+          &copy; {{ new Date().getFullYear() }} Spyfall Game. All rights reserved. | Made by <a href="https://omarshoura.com" target="_blank" class="underline hover:text-white">Omar</a>
+        </p>
       </div>
     </section>
   </div>
