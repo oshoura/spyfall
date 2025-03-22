@@ -8,19 +8,23 @@
         <h1 class="text-3xl md:text-5xl lg:text-6xl font-bold text-center mb-3 md:mb-4 tracking-tight">Spyfall</h1>
         <p class="text-lg md:text-xl lg:text-2xl text-center text-stone-300 max-w-2xl mb-8 md:mb-10">Find the spy before the spy finds you</p>
         <div class="flex flex-col sm:flex-row gap-4 w-full max-w-md">
-          <RouterLink to="/play" class="text-lg font-bold py-6">
-          <Button asChild variant="orange" size="lg" class="w-full">
-              Play Now
-            </Button>
-          </RouterLink>
-          <Dialog v-model:open="headerDialogOpen">
-            <DialogTrigger asChild>
-              <Button variant="outline" size="lg" class="border-white text-slate-700 border-2 hover:bg-white/10 hover:text-slate-100 w-full">
-                <span class="text-lg font-bold py-6">How to Play</span>
+          <div class="w-full sm:w-1/2">
+            <RouterLink to="/play" class="block w-full">
+              <Button variant="orange" size="lg" class="w-full text-lg font-bold">
+                Play Now
               </Button>
-            </DialogTrigger>
-            <HowToPlayModal />
-          </Dialog>
+            </RouterLink>
+          </div>
+          <div class="w-full sm:w-1/2">
+            <Dialog v-model:open="headerDialogOpen">
+              <DialogTrigger asChild>
+                <Button variant="outline" size="lg" class="w-full text-lg font-bold border-white text-slate-700 border-2 hover:bg-white/10 hover:text-white">
+                  How to Play
+                </Button>
+              </DialogTrigger>
+              <HowToPlayModal />
+            </Dialog>
+          </div>
         </div>
       </div>
     </header>
@@ -54,8 +58,8 @@
         <div class="text-center mt-8 md:mt-10">
           <Dialog v-model:open="learnMoreDialogOpen">
             <DialogTrigger asChild>
-              <Button variant="orange" size="lg">
-                <span class="text-lg font-bold">Learn More</span>
+              <Button variant="orange" size="lg" class="text-lg font-bold px-8">
+                Learn More
               </Button>
             </DialogTrigger>
             <HowToPlayModal />
@@ -69,11 +73,11 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <h2 class="text-2xl md:text-3xl font-bold mb-3 md:mb-4">Ready to Play?</h2>
         <p class="text-base md:text-xl text-white/80 mb-6 md:mb-8">Gather your friends and start a game now!</p>
-        <Button asChild variant="white" size="lg">
-          <RouterLink to="/play" class="text-lg font-bold py-6">
+        <RouterLink to="/play" class="inline-block">
+          <Button variant="white" size="lg" class="text-lg font-bold px-8">
             Play Spyfall
-          </RouterLink>
-        </Button>
+          </Button>
+        </RouterLink>
         <p class="text-sm md:text-base text-white/70 mt-8 pt-8 border-t border-white/20">
           &copy; {{ new Date().getFullYear() }} Spyfall Game. All rights reserved. | Made by <a href="https://omarshoura.com" target="_blank" class="underline hover:text-white">Omar</a>
         </p>

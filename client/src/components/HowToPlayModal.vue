@@ -117,11 +117,11 @@
     </div>
     
     <DialogFooter>
-      <Button asChild variant="default" class="bg-orange-500 hover:bg-orange-600 text-white">
-        <RouterLink to="/play" class="w-full sm:w-auto text-lg font-bold py-6">
+      <RouterLink to="/play" class="inline-block">
+        <Button variant="default" class="bg-orange-500 hover:bg-orange-600 text-white text-lg font-bold px-8">
           Play Now
-        </RouterLink>
-      </Button>
+        </Button>
+      </RouterLink>
     </DialogFooter>
   </DialogContent>
 </template>
