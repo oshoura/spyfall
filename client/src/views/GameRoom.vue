@@ -167,24 +167,67 @@
         </DialogDescription>
       </DialogHeader>
       <div class="grid gap-4 py-4">
-        <Label for="location-select" class="text-left">Select a location:</Label>
-        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-[40vh] overflow-y-auto">
-          <Button 
-            v-for="location in sortedLocationsForSelection"
-            :key="location.name"
-            variant="outline"
-            :class="{ 'border-orange-500 bg-orange-50': spyGuess === location.name }"
-            @click="selectLocationForGuess(location.name)"
-            class="flex flex-col h-auto p-2"
-          >
-            <img 
-              :src="getLocationImage(location.name)" 
-              :alt="location.name" 
-              class="w-full h-16 object-cover rounded mb-1"
-              @error="handleImageError"
+        <div class="flex flex-col gap-2">
+          <Label for="location-search" class="text-left">Search locations:</Label>
+          <div class="relative">
+            <input 
+              id="location-search"
+              v-model="locationSearch"
+              type="text"
+              placeholder="Type to search..."
+              class="w-full rounded-md border border-gray-300 px-3 py-2 pl-9 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+              ref="searchInputRef"
+              @keydown.escape="clearSearch"
+              autocomplete="off"
             />
-            <span class="text-xs">{{ location.name }}</span>
-          </Button>
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              width="16" 
+              height="16" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="currentColor" 
+              stroke-width="2" 
+              stroke-linecap="round" 
+              stroke-linejoin="round" 
+              class="lucide lucide-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            >
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.3-4.3"></path>
+            </svg>
+            <button 
+              v-if="locationSearch" 
+              @click="clearSearch"
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+              aria-label="Clear search"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+            </button>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[40vh] overflow-y-auto p-1">
+          <button 
+            v-for="location in filteredLocationsForSelection"
+            :key="location.name"
+            @click="selectLocationForGuess(location.name)"
+            class="location-tile"
+            :class="{ 'selected': spyGuess === location.name }"
+            type="button"
+          >
+            <div class="location-image">
+              <img 
+                :src="getLocationImage(location.name)" 
+                :alt="location.name" 
+                @error="handleImageError"
+              />
+            </div>
+            <div class="location-name">
+              {{ location.name }}
+            </div>
+          </button>
+        </div>
+        <div v-if="filteredLocationsForSelection.length === 0" class="text-center py-4 text-gray-500">
+          No locations found matching your search.
         </div>
       </div>
       <DialogFooter>
@@ -314,7 +357,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import socketService from '../services/socketService'
 import type { Player } from '../services/socketService'
@@ -340,10 +383,12 @@ const currentPlayerId = computed(() => socketService.playerId.value)
 const showSpyGuessModal = ref(false)
 const showRoundResultsModal = ref(false)
 const spyGuess = ref('')
+const locationSearch = ref('')
 const timeRemaining = ref(0)
 const timerInterval = ref<ReturnType<typeof setInterval> | undefined>(undefined)
 const locationTilesRef = ref<InstanceType<typeof LocationTiles> | null>(null)
 const playerMarkerRef = ref<InstanceType<typeof PlayerMarker> | null>(null)
+const searchInputRef = ref<HTMLInputElement | null>(null)
 const { toast } = useToast()
 
 // Get game state from socket service
@@ -746,6 +791,35 @@ const sortedLocationsForSelection = computed(() => {
   return locationTilesRef.value.getSortedLocationsForSelection;
 });
 
+// Filter locations based on search
+const filteredLocationsForSelection = computed(() => {
+  if (!locationSearch.value.trim()) {
+    return sortedLocationsForSelection.value;
+  }
+  
+  const searchTerm = locationSearch.value.toLowerCase().trim();
+  return sortedLocationsForSelection.value.filter(location => 
+    location.name.toLowerCase().includes(searchTerm)
+  );
+});
+
+// Clear search function
+const clearSearch = () => {
+  locationSearch.value = '';
+  searchInputRef.value?.focus();
+};
+
+// Focus search input when modal opens
+watch(() => showSpyGuessModal.value, (isOpen) => {
+  if (isOpen) {
+    locationSearch.value = '';
+    // Use nextTick to ensure the DOM has updated before focusing
+    nextTick(() => {
+      searchInputRef.value?.focus();
+    });
+  }
+});
+
 // Voting results display functions
 const getPlayerName = (id: string | undefined): string => {
   if (!id) return 'Unknown';
@@ -831,4 +905,67 @@ const handleSpyGuessClick = () => {
     showSpyGuessModal.value = true
   }
 }
-</script> 
+</script>
+
+<style scoped>
+.location-tile {
+  display: flex;
+  flex-direction: column;
+  height: 100px;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  overflow: hidden;
+  transition: all 0.2s;
+  background: white;
+  padding: 0;
+}
+
+.location-tile:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.location-tile:focus {
+  outline: none;
+  ring: 2px solid #f97316;
+}
+
+.location-tile.selected {
+  border-color: #f97316;
+  background-color: #fff7ed;
+  box-shadow: 0 0 0 1px #f97316;
+}
+
+.location-image {
+  height: 60px;
+  width: 100%;
+  overflow: hidden;
+  background-color: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.location-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  aspect-ratio: 1/1;
+}
+
+.location-name {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.375rem;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.1;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  width: 100%;
+  margin: 0 auto;
+}
+</style> 
