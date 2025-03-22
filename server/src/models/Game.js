@@ -523,14 +523,25 @@ class Game {
     // Find the spy
     let spyId = this.getSpyId();
     
-    // Determine if the spy won (always true if spy left)
-    const spyWon = reason === 'spy-left';
+    // Determine most voted player (if any votes were cast)
+    let mostVotedId = null;
+    let maxVotes = -1;
+    
+    for (const [playerId, voteCount] of this.votes.entries()) {
+      if (voteCount > maxVotes) {
+        maxVotes = voteCount;
+        mostVotedId = playerId;
+      }
+    }
+    
+    // Determine if the spy won (always true for time-up, host-ended, and spy-left)
+    const spyWon = reason === 'spy-left' || reason === 'time-up' || reason === 'host-ended';
     
     // Store results for getStateForPlayer to use
     this.results = {
       votes: this.votes,
       spyId,
-      mostVotedId: null,
+      mostVotedId,
       spyWon,
       location: this.currentLocation,
       spyGuess: this.spyGuess,

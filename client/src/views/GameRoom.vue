@@ -242,7 +242,7 @@
     <DialogContent class="sm:max-w-md">
       <DialogHeader>
         <DialogTitle class="text-xl">
-          <span v-if="votingResults?.spyWon" class="text-orange-600">The Spy Won!</span>
+          <span v-if="votingResults?.spyWon || votingResults?.reason === 'time-up' || votingResults?.reason === 'host-ended'" class="text-orange-600">The Spy Won!</span>
           <span v-else class="text-green-600">The Spy Was Caught!</span>
         </DialogTitle>
         <DialogDescription class="text-base">
@@ -258,7 +258,6 @@
             <div class="text-lg font-bold text-gray-800">{{ votingResults.location }}</div>
           </div>
           <img 
-            v-if="!isSpy" 
             :src="getLocationImage(votingResults.location)"
             class="w-24 h-24 object-cover rounded-lg"
             :alt="votingResults.location"
