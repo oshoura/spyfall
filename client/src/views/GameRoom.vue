@@ -882,6 +882,7 @@ const infoHidden = ref(localStorage.getItem('spyfall-identity-hidden') === 'true
 // Toggle identity visibility
 const toggleInfoVisibility = () => {
   infoHidden.value = !infoHidden.value
+  localStorage.setItem('spyfall-identity-hidden', infoHidden.value.toString())
   
   // If hiding identity and spy guess modal is open, close it
   if (infoHidden.value && showSpyGuessModal.value) {
