@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { ref } from 'vue';
+import sessionService from './sessionService';
 
 // Types
 export interface Player {
@@ -49,53 +50,116 @@ export interface LocationPack {
 class SocketService {
   public socket: Socket | null = null;
   private serverUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
-  
+  private reconnectAttempts = 0;
+  private readonly MAX_RECONNECT_ATTEMPTS = 5;
+
   // Reactive state
   public connected = ref(false);
   public gameState = ref<GameState | null>(null);
   public playerId = ref<string | null>(null);
   public playerName = ref<string>('');
   public error = ref<string | null>(null);
-  
+
   // Initialize socket connection
   public init(): void {
     if (this.socket) {
       return;
     }
-    
-    this.socket = io(this.serverUrl);
-    
+
+    this.socket = io(this.serverUrl, {
+      reconnection: true,
+      reconnectionAttempts: this.MAX_RECONNECT_ATTEMPTS,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+    });
+
     this.socket.on('connect', () => {
       console.log('Connected to server');
       this.connected.value = true;
-      this.playerId.value = this.socket?.id || null;
+      this.reconnectAttempts = 0;
+
+      // If we have a session token, try to rejoin
+      if (sessionService.hasSession()) {
+        this.rejoinGame();
+      }
     });
-    
+
     this.socket.on('disconnect', () => {
       console.log('Disconnected from server');
       this.connected.value = false;
     });
-    
+
     this.socket.on('connect_error', (err) => {
       console.error('Connection error:', err);
       this.error.value = 'Failed to connect to the server. Please try again.';
+      this.reconnectAttempts++;
+
+      if (this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
+        this.error.value = 'Failed to connect after multiple attempts. Please refresh the page.';
+      }
     });
-    
+
+    // Handle rejoin responses
+    this.socket.on('rejoin-success', (response) => {
+      console.log('Rejoined game:', response);
+      this.gameState.value = response.game;
+      this.playerId.value = response.player?.id || null;
+      this.error.value = null;
+    });
+
+    this.socket.on('rejoin-error', (response) => {
+      this.error.value = response.error;
+      sessionService.clearSession();
+    });
+
+    // Handle create game responses
+    this.socket.on('create-game-success', (response) => {
+      this.gameState.value = response.game;
+      this.playerId.value = response.player.id;
+      this.error.value = null;
+    });
+
+    this.socket.on('create-game-error', (response) => {
+      this.error.value = response.error;
+    });
+
+    // Handle join game responses
+    this.socket.on('join-game-success', (response) => {
+      this.gameState.value = response.game;
+      this.playerId.value = response.player.id;
+      this.error.value = null;
+    });
+
+    this.socket.on('join-game-error', (response) => {
+      this.error.value = response.error;
+    });
+
     // Game events
     this.setupGameEvents();
   }
-  
+
+  private rejoinGame() {
+    if (!this.socket) return;
+
+    const sessionToken = sessionService.getSessionToken();
+    if (!sessionToken) return;
+
+    console.log('Rejoining game with session token:', sessionToken);
+    this.socket.emit('rejoin-game', { sessionToken });
+  }
+
   // Set up game event listeners
   private setupGameEvents(): void {
     if (!this.socket) return;
-    
+
     // Player joined
     this.socket.on('player-joined', ({ player }) => {
       if (this.gameState.value) {
         this.gameState.value.players.push(player);
       }
     });
-    
+
     // Player ready changed
     this.socket.on('player-ready-changed', ({ playerId, isReady }) => {
       if (this.gameState.value) {
@@ -105,24 +169,24 @@ class SocketService {
         }
       }
     });
-    
+
     // Game started
     this.socket.on('game-started', (gameState) => {
       this.gameState.value = gameState;
     });
-    
+
     // Phase change
     this.socket.on('phase-change', ({ phase }) => {
       if (this.gameState.value) {
         this.gameState.value.state = phase;
       }
     });
-    
+
     // Turn ended
     this.socket.on('turn-ended', () => {
       // This is handled by the UI
     });
-    
+
     // Player voted
     this.socket.on('player-voted', ({ playerId, targetPlayerId, voteCounts }) => {
       if (this.gameState.value) {
@@ -132,7 +196,7 @@ class SocketService {
           voter.hasVoted = true;
           voter.votedFor = targetPlayerId;
         }
-        
+
         // Update vote counts for all players
         if (voteCounts) {
           this.gameState.value.players.forEach(player => {
@@ -141,17 +205,17 @@ class SocketService {
         }
       }
     });
-    
+
     // Voting complete
     this.socket.on('voting-complete', (gameState) => {
       this.gameState.value = gameState;
     });
-    
+
     // Round started
     this.socket.on('round-started', (gameState) => {
       this.gameState.value = gameState;
     });
-    
+
     // Timer started
     this.socket.on('timer-started', ({ timestamp, roundTime }) => {
       if (this.gameState.value) {
@@ -159,24 +223,24 @@ class SocketService {
         this.gameState.value.roundTime = roundTime;
       }
     });
-    
+
     // Timer ended
     this.socket.on('timer-ended', ({ timestamp }) => {
       if (this.gameState.value) {
         this.gameState.value.timerEnded = timestamp;
       }
     });
-    
+
     // Game over
     this.socket.on('game-over', () => {
       // Handle game over
     });
-    
+
     // Returned to lobby
     this.socket.on('returned-to-lobby', ({ game }) => {
       this.gameState.value = game;
     });
-    
+
     // Player left
     this.socket.on('player-left', ({ playerId, newHostId }) => {
       if (this.gameState.value) {
@@ -184,38 +248,38 @@ class SocketService {
         this.gameState.value.hostId = newHostId;
       }
     });
-    
+
     // Location packs updated
     this.socket.on('location-packs-updated', ({ locationPacks }) => {
       if (this.gameState.value) {
         this.gameState.value.locationPacks = locationPacks;
       }
     });
-    
+
     // Vote called
     this.socket.on('vote-called', ({ voteCallers }) => {
       if (this.gameState.value) {
         this.gameState.value.voteCallers = voteCallers;
       }
     });
-    
+
     // Voting started
     this.socket.on('voting-started', ({ state }) => {
       this.gameState.value = state;
     });
-    
+
     // Spy guessed
     this.socket.on('spy-guessed', (data) => {
       // This will be handled by the round-ended event
       console.log('Spy guessed:', data);
     });
-    
+
     // Round ended (replaces voting-complete)
     this.socket.on('round-ended', (gameState) => {
       this.gameState.value = gameState;
     });
   }
-  
+
   // Create a new game
   public createGame(playerName: string): Promise<{ gameId: string }> {
     return new Promise((resolve, reject) => {
@@ -223,20 +287,30 @@ class SocketService {
         reject(new Error('Socket not initialized'));
         return;
       }
-      
+
       this.playerName.value = playerName;
-      
-      this.socket.emit('create-game', { playerName }, (response: any) => {
-        if (response.success) {
-          this.gameState.value = response.game;
-          resolve({ gameId: response.gameId });
-        } else {
-          reject(new Error(response.error || 'Failed to create game'));
-        }
-      });
+      const sessionToken = sessionService.generateNewSession();
+
+      this.socket.emit('create-game', { playerName, sessionToken });
+
+      // Set up one-time listeners for this specific create game attempt
+      const successHandler = (response: any) => {
+        this.socket?.off('create-game-success', successHandler);
+        this.socket?.off('create-game-error', errorHandler);
+        resolve({ gameId: response.gameId });
+      };
+
+      const errorHandler = (response: any) => {
+        this.socket?.off('create-game-success', successHandler);
+        this.socket?.off('create-game-error', errorHandler);
+        reject(new Error(response.error || 'Failed to create game'));
+      };
+
+      this.socket.once('create-game-success', successHandler);
+      this.socket.once('create-game-error', errorHandler);
     });
   }
-  
+
   // Join an existing game
   public joinGame(gameId: string, playerName: string): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -244,20 +318,30 @@ class SocketService {
         reject(new Error('Socket not initialized'));
         return;
       }
-      
+
       this.playerName.value = playerName;
-      
-      this.socket.emit('join-game', { gameId, playerName }, (response: any) => {
-        if (response.success) {
-          this.gameState.value = response.game;
-          resolve();
-        } else {
-          reject(new Error(response.error || 'Failed to join game'));
-        }
-      });
+      const sessionToken = sessionService.generateNewSession();
+
+      this.socket.emit('join-game', { gameId, playerName, sessionToken });
+
+      // Set up one-time listeners for this specific join game attempt
+      const successHandler = () => {
+        this.socket?.off('join-game-success', successHandler);
+        this.socket?.off('join-game-error', errorHandler);
+        resolve();
+      };
+
+      const errorHandler = (response: any) => {
+        this.socket?.off('join-game-success', successHandler);
+        this.socket?.off('join-game-error', errorHandler);
+        reject(new Error(response.error || 'Failed to join game'));
+      };
+
+      this.socket.once('join-game-success', successHandler);
+      this.socket.once('join-game-error', errorHandler);
     });
   }
-  
+
   // Toggle ready status
   public toggleReady(): Promise<{ isReady: boolean }> {
     return new Promise((resolve, reject) => {
@@ -265,7 +349,7 @@ class SocketService {
         reject(new Error('Socket not initialized'));
         return;
       }
-      
+
       this.socket.emit('toggle-ready', {}, (response: any) => {
         if (response.success) {
           resolve({ isReady: response.isReady });
@@ -275,7 +359,7 @@ class SocketService {
       });
     });
   }
-  
+
   // Start the game
   public startGame(settings?: { roundTime?: number, noMaxTime?: boolean }): Promise<{ round: number }> {
     return new Promise((resolve, reject) => {
@@ -283,7 +367,7 @@ class SocketService {
         reject(new Error('Socket not initialized'));
         return;
       }
-      
+
       this.socket.emit('start-game', settings || {}, (response: any) => {
         if (response.success) {
           resolve({ round: response.round });
@@ -293,7 +377,7 @@ class SocketService {
       });
     });
   }
-  
+
   // End turn
   public endTurn(): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -301,7 +385,7 @@ class SocketService {
         reject(new Error('Socket not initialized'));
         return;
       }
-      
+
       this.socket.emit('end-turn', {}, (response: any) => {
         if (response.success) {
           resolve();
@@ -311,7 +395,7 @@ class SocketService {
       });
     });
   }
-  
+
   // Submit vote
   public submitVote(targetPlayerId: string): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -319,7 +403,7 @@ class SocketService {
         reject(new Error('Socket not initialized'));
         return;
       }
-      
+
       this.socket.emit('submit-vote', { targetPlayerId }, (response: any) => {
         if (response.success) {
           resolve();
@@ -329,7 +413,7 @@ class SocketService {
       });
     });
   }
-  
+
   // Start next round
   public nextRound(): Promise<{ round: number, gameOver: boolean }> {
     return new Promise((resolve, reject) => {
@@ -337,10 +421,10 @@ class SocketService {
         reject(new Error('Socket not initialized'));
         return;
       }
-      
+
       this.socket.emit('next-round', {}, (response: any) => {
         if (response.success) {
-          resolve({ 
+          resolve({
             round: response.round,
             gameOver: response.gameOver || false
           });
@@ -350,7 +434,7 @@ class SocketService {
       });
     });
   }
-  
+
   // Return to lobby
   public returnToLobby(): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -358,7 +442,7 @@ class SocketService {
         reject(new Error('Socket not initialized'));
         return;
       }
-      
+
       this.socket.emit('return-to-lobby', {}, (response: any) => {
         if (response.success) {
           resolve();
@@ -368,7 +452,7 @@ class SocketService {
       });
     });
   }
-  
+
   // Disconnect
   public disconnect(): void {
     if (this.socket) {
@@ -378,7 +462,7 @@ class SocketService {
       this.gameState.value = null;
     }
   }
-  
+
   // Set location packs
   public setLocationPacks(packIds: string[]): Promise<{ locationPacks: LocationPack[] }> {
     return new Promise((resolve, reject) => {
@@ -386,7 +470,7 @@ class SocketService {
         reject(new Error('Socket not initialized'));
         return;
       }
-      
+
       this.socket.emit('set-location-packs', { packIds }, (response: any) => {
         if (response.success) {
           if (this.gameState.value) {
@@ -399,7 +483,7 @@ class SocketService {
       });
     });
   }
-  
+
   // Set round time
   public setRoundTime(minutes: number): Promise<{ roundTime: number }> {
     return new Promise((resolve, reject) => {
@@ -407,15 +491,15 @@ class SocketService {
         reject(new Error('Socket not initialized'));
         return;
       }
-      
+
       // Set a timeout for the socket emit
       const timeout = setTimeout(() => {
         reject(new Error('Server did not respond in time'));
       }, 4000);
-      
+
       this.socket.emit('set-round-time', { minutes }, (response: any) => {
         clearTimeout(timeout);
-        
+
         if (response && response.success) {
           if (this.gameState.value) {
             this.gameState.value.roundTime = response.roundTime || minutes;
@@ -433,7 +517,7 @@ class SocketService {
       });
     });
   }
-  
+
   /**
    * Call for a vote to find the spy
    */
@@ -443,7 +527,7 @@ class SocketService {
         reject(new Error('Socket not initialized'));
         return;
       }
-      
+
       this.socket.emit('call-for-vote', {}, (response: any) => {
         if (response.success) {
           resolve({ votingStarted: response.votingStarted });
@@ -453,7 +537,7 @@ class SocketService {
       });
     });
   }
-  
+
   /**
    * Spy makes a guess for the location
    */
@@ -463,10 +547,10 @@ class SocketService {
         reject(new Error('Socket not initialized'));
         return;
       }
-      
+
       this.socket.emit('spy-guess', { locationGuess }, (response: any) => {
         if (response.success) {
-          resolve({ 
+          resolve({
             isCorrect: response.isCorrect,
             actualLocation: response.actualLocation
           });
@@ -476,7 +560,7 @@ class SocketService {
       });
     });
   }
-  
+
   /**
    * Get all possible locations for the current game
    */
@@ -486,7 +570,7 @@ class SocketService {
         reject(new Error('Socket not initialized'));
         return;
       }
-      
+
       this.socket.emit('get-possible-locations', {}, (response: any) => {
         if (response.success) {
           resolve({ locations: response.locations });
@@ -496,7 +580,7 @@ class SocketService {
       });
     });
   }
-  
+
   /**
    * End the current round early (host only)
    */
@@ -506,7 +590,7 @@ class SocketService {
         reject(new Error('Socket not initialized'));
         return;
       }
-      
+
       this.socket.emit('end-round-early', {}, (response: any) => {
         if (response.success) {
           resolve();

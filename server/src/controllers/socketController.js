@@ -1,4 +1,5 @@
 const gameManager = require('../models/GameManager');
+const sessionManager = require('../models/SessionManager');
 const { GameState } = require('../models/Game');
 
 /**
@@ -44,56 +45,100 @@ function initializeSocketController(io) {
   io.on('connection', (socket) => {
     console.log(`User connected: ${socket.id}`);
     
-    // Create a new game
-    socket.on('create-game', ({ playerName }, callback) => {
-      const result = gameManager.createGame(socket.id, playerName);
-      
-      if (result.error) {
-        return callback({
-          success: false,
-          error: result.error
+    // Handle rejoin game
+    socket.on('rejoin-game', ({ sessionToken }) => {
+      console.log('Rejoining game with session token:', sessionToken);
+      try {
+        const session = sessionManager.getSession(sessionToken);
+        
+        if (!session) {
+          socket.emit('rejoin-error', { error: 'Session not found' });
+          return;
+        }
+        
+        const game = gameManager.getGame(session.gameId);
+        if (!game) {
+          socket.emit('rejoin-error', { error: 'Game not found' });
+          return;
+        }
+        
+        sessionManager.updateSocketId(sessionToken, socket.id);
+        socket.join(game.id);
+        sessionManager.clearDisconnectTimeout(session.playerId);
+        const playerState = game.getStateForPlayer(session.playerId);
+        const player = playerState.players.find(p => p.id === session.playerId);
+        socket.emit('rejoin-success', {
+          game: playerState,
+          player: player
         });
+      } catch (error) {
+        console.error('Error in rejoin-game:', error);
+        socket.emit('rejoin-error', { error: 'Internal server error' });
       }
-      
-      const { game, player } = result;
-      
-      // Join the socket to the game room
-      socket.join(game.id);
-      
-      callback({
-        success: true,
-        gameId: game.id,
-        player: player.toJSON(),
-        game: game.getStateForPlayer(socket.id)
-      });
+    });
+    
+    // Create a new game
+    socket.on('create-game', ({ playerName, sessionToken }) => {
+      try {
+        const result = gameManager.createGame(socket.id, playerName);
+        
+        if (result.error) {
+          socket.emit('create-game-error', { error: result.error });
+          return;
+        }
+        
+        const { game, player } = result;
+        
+        // Create session
+        sessionManager.createSession(sessionToken, player.id, game.id);
+        sessionManager.updateSocketId(sessionToken, socket.id);
+        
+        // Join the socket to the game room
+        socket.join(game.id);
+        
+        socket.emit('create-game-success', {
+          gameId: game.id,
+          player: player.toJSON(),
+          game: game.getStateForPlayer(socket.id)
+        });
+      } catch (error) {
+        console.error('Error in create-game:', error);
+        socket.emit('create-game-error', { error: 'Internal server error' });
+      }
     });
     
     // Join an existing game
-    socket.on('join-game', ({ gameId, playerName }, callback) => {
-      const result = gameManager.joinGame(gameId, socket.id, playerName);
-      
-      if (!result.success) {
-        return callback({
-          success: false,
-          error: result.error
+    socket.on('join-game', ({ gameId, playerName, sessionToken }) => {
+      try {
+        const result = gameManager.joinGame(gameId, socket.id, playerName);
+        
+        if (!result.success) {
+          socket.emit('join-game-error', { error: result.error });
+          return;
+        }
+        
+        const { game, player } = result;
+        
+        // Create session
+        sessionManager.createSession(sessionToken, player.id, game.id);
+        sessionManager.updateSocketId(sessionToken, socket.id);
+        
+        // Join the socket to the game room
+        socket.join(game.id);
+        
+        // Notify other players
+        socket.to(game.id).emit('player-joined', {
+          player: player.toJSON()
         });
+        
+        socket.emit('join-game-success', {
+          player: player.toJSON(),
+          game: game.getStateForPlayer(socket.id)
+        });
+      } catch (error) {
+        console.error('Error in join-game:', error);
+        socket.emit('join-game-error', { error: 'Internal server error' });
       }
-      
-      const { game, player } = result;
-      
-      // Join the socket to the game room
-      socket.join(game.id);
-      
-      // Notify other players
-      socket.to(game.id).emit('player-joined', {
-        player: player.toJSON()
-      });
-      
-      callback({
-        success: true,
-        player: player.toJSON(),
-        game: game.getStateForPlayer(socket.id)
-      });
     });
     
     // Toggle ready status
@@ -490,34 +535,34 @@ function initializeSocketController(io) {
     
     // Handle disconnection
     socket.on('disconnect', () => {
-      const game = gameManager.getGameByPlayerId(socket.id);
+      const session = Array.from(sessionManager.sessions.values())
+        .find(s => s.socketId === socket.id);
       
-      if (game) {
-        // Store the player's ID before we remove them
-        const playerId = socket.id;
+      if (session) {
+        // Clear socket ID from session
+        session.socketId = null;
         
-        // Remove the player from the game
-        game.removePlayer(playerId);
-        
-        // If there are still players in the game
-        if (game.players.size > 0) {
-          // Notify remaining players
-          io.to(game.id).emit('player-left', {
-            playerId,
-            newHostId: game.hostId
-          });
-          
-          // If we're in the middle of a game and the spy left, end the round
-          if ((game.state === GameState.PLAYING || game.state === GameState.SPY_GUESSING) && playerId === game.getSpyId()) {
-            game.endRoundEarly('spy-left');
+        // Start disconnect timeout
+        sessionManager.startDisconnectTimeout(session.playerId, () => {
+          const game = gameManager.getGame(session.gameId);
+          if (game) {
+            // Remove player from game
+            game.removePlayer(session.playerId);
             
-            // Broadcast the game results
-            broadcastGameResults(io, game, 'spy-left');
+            // Notify remaining players
+            io.to(game.id).emit('player-left', {
+              playerId: session.playerId,
+              newHostId: game.hostId
+            });
+            
+            // If we're in the middle of a game and the spy left, end the round
+            if ((game.state === GameState.PLAYING || game.state === GameState.SPY_GUESSING) && 
+                session.playerId === game.getSpyId()) {
+              game.endRoundEarly('spy-left');
+              broadcastGameResults(io, game, 'spy-left');
+            }
           }
-        }
-        
-        // Remove mapping from player to game
-        gameManager.playerGameMap.delete(playerId);
+        });
       }
       
       console.log(`User disconnected: ${socket.id}`);

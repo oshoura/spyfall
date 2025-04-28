@@ -156,6 +156,7 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/
 const router = useRouter()
 const isLoading = ref(false)
 const errorMessage = ref('')
+const rejoinTimeout = ref<NodeJS.Timeout | null>(null)
 const { toast } = useToast()
 
 // Get game state from socket service
@@ -202,14 +203,36 @@ watch(() => gameState.value?.roundTime, (newRoundTime) => {
 
 // Check if we have a game state on mount
 onMounted(() => {
-  if (!gameState.value) {
-    router.push('/')
-    return
-  }
-  
+  isLoading.value = true;
+  // Wait up to 1.5 seconds for socket/game state to be restored
+  rejoinTimeout.value = setTimeout(() => {
+    if (!gameState.value) {
+      isLoading.value = false;
+      router.push('/')
+    }
+  }, 1500)
+
+  // If game state is restored before timeout, clear the timeout
+  watch(gameState, (val) => {
+    if (val && rejoinTimeout.value) {
+      clearTimeout(rejoinTimeout.value)
+      rejoinTimeout.value = null
+      isLoading.value = false
+    }
+  }, { immediate: true })
+
   // Set initial round time from game state if available
-  if (gameState.value.roundTime) {
+  if (gameState.value?.roundTime) {
     roundTime.value = gameState.value.roundTime;
+  }
+})
+
+// Watch for rejoin error and redirect immediately if it occurs
+watch(() => socketService.error.value, (err) => {
+  if (err && err.includes('Session not found')) {
+    if (rejoinTimeout.value) clearTimeout(rejoinTimeout.value)
+    isLoading.value = false
+    router.push('/')
   }
 })
 
