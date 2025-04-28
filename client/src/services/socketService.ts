@@ -600,6 +600,24 @@ class SocketService {
       });
     });
   }
+
+  /**
+   * Leave the current game/party
+   */
+  public leaveGame(): Promise<void> {
+    return new Promise((resolve) => {
+      if (!this.socket) {
+        resolve();
+        return;
+      }
+      this.socket.emit('leave-game', {}, () => {
+        this.gameState.value = null;
+        this.playerId.value = null;
+        this.playerName.value = '';
+        resolve();
+      });
+    });
+  }
 }
 
 // Export as singleton

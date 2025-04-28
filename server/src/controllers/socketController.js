@@ -533,6 +533,24 @@ function initializeSocketController(io) {
       });
     });
     
+    // Leave game/party
+    socket.on('leave-game', (_, callback) => {
+      const session = Array.from(sessionManager.sessions.values())
+        .find(s => s.socketId === socket.id);
+      if (session) {
+        const game = gameManager.getGame(session.gameId);
+        if (game) {
+          game.removePlayer(session.playerId);
+          io.to(game.id).emit('player-left', {
+            playerId: session.playerId,
+            newHostId: game.hostId
+          });
+        }
+        sessionManager.removeSession(session.playerId);
+      }
+      if (callback) callback();
+    });
+    
     // Handle disconnection
     socket.on('disconnect', () => {
       const session = Array.from(sessionManager.sessions.values())

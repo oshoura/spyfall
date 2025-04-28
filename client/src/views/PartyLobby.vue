@@ -137,6 +137,16 @@
         >
           <span class="text-lg font-medium">{{ isLoading ? 'Starting...' : 'Start Game' }}</span>
         </Button>
+
+        <Button
+          variant="outline"
+          size="lg"
+          class="py-6 px-8 w-full md:w-48"
+          @click="leaveParty"
+          :disabled="isLoading"
+        >
+          <span class="text-lg font-medium">{{ isLoading ? 'Leaving...' : 'Leave Party' }}</span>
+        </Button>
       </div>
     </div>
   </div>
@@ -332,6 +342,20 @@ const setRoundTime = (minutes: number) => {
   // Simply update the local state without server communication
   roundTime.value = minutes;
 };
+
+const leaveParty = async () => {
+  try {
+    isLoading.value = true;
+    errorMessage.value = '';
+    await socketService.leaveGame();
+    router.push('/');
+  } catch (error) {
+    console.error('Error leaving party:', error);
+    errorMessage.value = error instanceof Error ? error.message : 'Failed to leave party';
+  } finally {
+    isLoading.value = false;
+  }
+}
 </script>
 
 <style scoped>
