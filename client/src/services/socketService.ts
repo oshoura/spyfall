@@ -1,11 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { ref } from 'vue';
 import sessionService from './sessionService';
-import { useRouter } from 'vue-router';
-// import { useRouter } from 'vue-router'
-
-const router = useRouter();
-
 // Types
 export interface Player {
   id: string;
@@ -109,7 +104,9 @@ class SocketService {
       this.gameState.value = response.game;
       this.playerId.value = response.player?.id || null;
       this.error.value = null;
-      router.push(`/lobby`);
+      if (!window.location.pathname.includes('/lobby') && !window.location.pathname.includes('/play')) {
+        window.location.href = '/lobby';
+      }
     });
 
     this.socket.on('rejoin-error', (response) => {
@@ -250,6 +247,9 @@ class SocketService {
 
     // Player left
     this.socket.on('player-left', ({ playerId, newHostId }) => {
+      if (playerId === this.playerId.value) {
+        window.location.href = '/';
+      }
       if (this.gameState.value) {
         this.gameState.value.players = this.gameState.value.players.filter(p => p.id !== playerId);
         this.gameState.value.hostId = newHostId;
@@ -603,6 +603,28 @@ class SocketService {
           resolve();
         } else {
           reject(new Error(response.error || 'Failed to end round early'));
+        }
+      });
+    });
+  }
+
+  /**
+   * Remove a player from the game (host only)
+   *
+   * @param {string} playerIdToRemove - ID of the player to remove
+   */
+  public removePlayer(playerIdToRemove: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('Socket not initialized'));
+        return;
+      }
+
+      this.socket.emit('remove-player', { playerIdToRemove }, (response: any) => {
+        if (response.success) {
+          resolve();
+        } else {
+          reject(new Error(response.error || 'Failed to remove player'));
         }
       });
     });

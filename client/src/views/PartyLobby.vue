@@ -37,12 +37,31 @@
                 </div>
               </div>
             </div>
-            <div class="text-xs px-3 py-1 rounded-full" 
-                :class="{
-                  'bg-green-500 text-white': player.ready,
-                  'bg-gray-300 text-gray-700': !player.ready
-                }">
-              {{ player.ready ? 'Ready' : 'Not Ready' }}
+            <div class="flex items-center space-x-2">
+              <div class="text-xs px-3 py-1 rounded-full" 
+                  :class="{
+                    'bg-green-500 text-white': player.ready,
+                    'bg-gray-300 text-gray-700': !player.ready
+                  }">
+                {{ player.ready ? 'Ready' : 'Not Ready' }}
+              </div>
+              <DropdownMenu v-if="isHost && player.id !== playerId">
+                <DropdownMenuTrigger as-child>
+                  <Button variant="ghost" class="h-8 w-8 p-0">
+                    <span class="sr-only">Open menu</span>
+                    <MoreHorizontal class="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem 
+                    @click="removePlayer(player.id)"
+                    class="text-red-600 focus:text-red-600 focus:bg-red-50"
+                    :disabled="isLoading"
+                  >
+                    Remove Player
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
@@ -162,6 +181,13 @@ import Toaster from '@/components/ui/toast/Toaster.vue'
 import { useToast } from '@/components/ui/toast/use-toast'
 import socketService from '../services/socketService'
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { MoreHorizontal } from 'lucide-vue-next'
 
 const router = useRouter()
 const isLoading = ref(false)
@@ -356,6 +382,23 @@ const leaveParty = async () => {
     isLoading.value = false;
   }
 }
+
+// Add this method
+const removePlayer = async (playerIdToRemove: string) => {
+  if (!isHost.value || isLoading.value) return;
+  
+  try {
+    isLoading.value = true;
+    errorMessage.value = '';
+    // Assuming socketService will have a 'removePlayer' method
+    await socketService.removePlayer(playerIdToRemove);
+  } catch (error) {
+    console.error('Error removing player:', error);
+    errorMessage.value = error instanceof Error ? error.message : 'Failed to remove player';
+  } finally {
+    isLoading.value = false;
+  }
+};
 </script>
 
 <style scoped>

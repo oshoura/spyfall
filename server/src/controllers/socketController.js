@@ -566,6 +566,48 @@ function initializeSocketController(io) {
       if (callback) callback();
     });
     
+    // Handle host removing a player
+    socket.on('remove-player', ({ playerIdToRemove }, callback) => {
+      const hostPlayerId = gameManager.getPlayerIdFromSocketId(socket.id);
+      const game = gameManager.getGameByPlayerId(hostPlayerId);
+
+      if (!game) {
+        return callback({ success: false, error: 'Game not found' });
+      }
+
+      if (game.hostId !== hostPlayerId) {
+        return callback({ success: false, error: 'Only the host can remove players' });
+      }
+
+      if (hostPlayerId === playerIdToRemove) {
+        return callback({ success: false, error: 'Host cannot remove themselves' });
+      }
+
+      const removedPlayerSocketId  = game.getSocketIDFromPlayerID(playerIdToRemove)
+      const removed = game.removePlayer(playerIdToRemove);
+
+      if (!removed) {
+        return callback({ success: false, error: 'Player not found or could not be removed' });
+      }
+
+      // Notify remaining players
+      io.to(game.id).emit('player-left', {
+        playerId: playerIdToRemove,
+        newHostId: game.hostId // Host might change if the removed player was the host (though prevented above)
+      });
+
+      // Find the socket of the removed player to disconnect them
+      if (removedPlayerSocketId) {
+        const removedSocket = io.sockets.sockets.get(removedPlayerSocketId);
+        if (removedSocket) {
+          removedSocket.disconnect(true); // Force disconnect
+        }
+      }
+      sessionManager.removeSession(playerIdToRemove);
+      
+      callback({ success: true });
+    });
+    
     // Handle disconnection
     socket.on('disconnect', () => {
       const session = Array.from(sessionManager.sessions.values())
