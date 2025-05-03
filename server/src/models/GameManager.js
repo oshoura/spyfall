@@ -103,7 +103,6 @@ class GameManager {
    * @returns {string|null} - Player ID if found, null otherwise
    */
   getPlayerIdFromSocketId(socketId) {
-    console.log("get player id from socker", this.socketPlayerMap)
     return this.socketPlayerMap.get(socketId) || null;
   }
 

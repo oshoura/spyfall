@@ -556,18 +556,20 @@ class Game {
   returnToLobby() {
     this.state = GameState.LOBBY;
     
-    // Reset player readiness and voting status
-    for (const player of this.players.values()) {
-      player.ready = false;
-      player.hasVoted = false;
-      player.votedFor = null;
-    }
-    
-    // Clear votes
-    this.votes.clear();
-    this.voteCallers.clear();
+    this.resetState()
     
     this.lastUpdateTime = Date.now();
+  }
+
+  resetState() {
+    for (const player of this.players.values()) {
+        player.ready = false;
+        player.hasVoted = false;
+        player.votedFor = null;
+    }
+
+    this.votes.clear();
+    this.voteCallers.clear();
   }
 
   /**

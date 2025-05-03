@@ -35,6 +35,7 @@ function initializeSocketController(io) {
    */
   const broadcastGameResults = (io, game) => {
     // Send the results to each player
+    game.resetState();
     for (const playerId of game.players.keys()) {
       const playerState = game.getStateForPlayer(playerId);
       const socketID = game.getSocketIDFromPlayerID(playerId)

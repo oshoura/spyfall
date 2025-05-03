@@ -220,7 +220,7 @@ onMounted(() => {
       isLoading.value = false;
       router.push('/')
     }
-  }, 1500)
+  }, 100)
 
   // If game state is restored before timeout, clear the timeout
   watch(gameState, (val) => {
