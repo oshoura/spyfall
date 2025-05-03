@@ -11,7 +11,7 @@
         {{ errorMessage }}
       </div>
       
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto" :class="{ 'md:grid-cols-1': !showCreateParty }">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
         <div v-if="showCreateParty" class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all">
           <h2 class="text-2xl font-bold mb-6 text-gray-800">Create New Party</h2>
           <div class="space-y-4">
@@ -34,7 +34,7 @@
           </div>
         </div>
         
-        <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all" :class="{ 'md:col-span-1': !showCreateParty }">
+        <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all" :class="{ 'md:col-span-2': !showCreateParty }">
           <div class="flex items-center gap-2 mb-6">
             <h2 class="text-2xl font-bold text-gray-800">Join Party</h2>
             <button 
