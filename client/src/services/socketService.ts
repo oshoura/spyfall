@@ -105,7 +105,7 @@ class SocketService {
       this.playerId.value = response.player?.id || null;
       this.error.value = null;
       console.log('Successfully rejoined game', response.game.id);
-      if (!window.location.pathname.includes('/lobby') && !window.location.pathname.includes('/play')) {
+      if (!window.location.pathname.includes('/lobby') && !window.location.pathname.includes('/game')) {
         window.location.href = '/lobby';
       }
     });

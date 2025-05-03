@@ -35,8 +35,8 @@
         </div>
         
         <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all" :class="{ 'md:col-span-1': !showCreateParty }">
-          <div class="flex items-center gap-2">
-            <h2 class="text-2xl font-bold mb-6 text-gray-800">Join Party</h2>
+          <div class="flex items-center gap-2 mb-6">
+            <h2 class="text-2xl font-bold text-gray-800">Join Party</h2>
             <button 
               v-if="partyCodeFromQuery"
               @click="partyCodeFromQuery = false"
