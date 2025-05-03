@@ -15,6 +15,13 @@ const delegatedProps = computed(() => {
 })
 
 const forwarded = useForwardPropsEmits(delegatedProps, emits)
+
+// Function to explicitly close the toast by emitting the update event
+function handleClose() {
+  if (props.onOpenChange) {
+    props.onOpenChange(false)
+  }
+}
 </script>
 
 <template>
@@ -22,6 +29,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
     v-bind="forwarded"
     :class="cn(toastVariants({ variant }), props.class)"
     @update:open="onOpenChange"
+    @click="handleClose"
   >
     <slot />
   </ToastRoot>
