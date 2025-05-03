@@ -61,7 +61,13 @@
                     <DropdownMenuItem @click="openChangeNameDialog">
                       Change Name
                     </DropdownMenuItem>
-                    <!-- Add other self-actions here if needed -->
+                    <DropdownMenuItem 
+                      @click="leaveParty"
+                      class="text-red-600 focus:text-red-600 focus:bg-red-50"
+                      :disabled="isLoading"
+                    >
+                      Leave Party
+                    </DropdownMenuItem>
                   </template>
                   
                   <!-- Content for Host Viewing Other Players -->
@@ -199,16 +205,6 @@
           :disabled="!canStartGame || isLoading"
         >
           <span class="text-lg font-medium">{{ isLoading ? 'Starting...' : 'Start Game' }}</span>
-        </Button>
-
-        <Button
-          variant="outline"
-          size="lg"
-          class="py-6 px-8 w-full md:w-48"
-          @click="leaveParty"
-          :disabled="isLoading"
-        >
-          <span class="text-lg font-medium">{{ isLoading ? 'Leaving...' : 'Leave Party' }}</span>
         </Button>
       </div>
     </div>
