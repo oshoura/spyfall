@@ -49,9 +49,9 @@
         <Button
           v-if="showVoteButton && player.id !== currentPlayerId"
           @click.stop="voteForPlayer(player.id)"
-          variant="destructive"
+          variant="secondary"
           size="sm"
-          :class="hasCurrentUserVotedFor(player.id) ? 'bg-purple-600 hover:bg-purple-700' : ''"
+          :class="hasCurrentUserVotedFor(player.id) ? 'bg-purple-600 hover:bg-purple-700' : 'bg-red-200'"
         >
           {{ hasCurrentUserVotedFor(player.id) ? 'Voted' : 'Vote' }}
         </Button>

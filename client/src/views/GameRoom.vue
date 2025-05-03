@@ -125,7 +125,7 @@
                 @click="votePlayer(player.id)" 
                 variant="destructive" 
                 size="sm"
-                :class="currentPlayer?.votedFor === player.id ? 'bg-purple-600 hover:bg-purple-700' : ''"
+                :class="currentPlayer?.votedFor === player.id ? 'bg-purple-600 hover:bg-purple-700' : 'bg-red-200'"
               >
                 {{ currentPlayer?.votedFor === player.id ? 'Change Vote' : 'Vote' }}
               </Button>
