@@ -19,12 +19,14 @@ const GameState = {
 class Game {
   /**
    * Create a new game
-   * @param {string} hostId - Socket ID of the host player
+   * @param {string} hostId - Player ID of the host player
    */
   constructor(hostId) {
     this.id = generateCode();
     this.hostId = hostId;
     this.players = new Map(); // Map of player ID to Player object
+    this.socketToPlayer = new Map(); // Map of socket ID to player ID
+    this.playerToSocker = new Map()
     this.state = GameState.LOBBY;
     this.roundTime = 2 * 60; // 2 minutes in seconds
     this.timeRemaining = this.roundTime;
@@ -81,6 +83,8 @@ class Game {
     }
     
     this.players.set(player.id, player);
+    this.socketToPlayer.set(player.socketId, player.id); // Map socket ID to player ID
+    this.playerToSocker.set(player.id, player.socketId)
     this.lastUpdateTime = Date.now();
     return { success: true };
   }
@@ -93,6 +97,14 @@ class Game {
   removePlayer(playerId) {
     if (!this.players.has(playerId)) {
       return false;
+    }
+    
+    const player = this.players.get(playerId);
+    
+    // Remove socket to player mapping if it exists
+    if (player && player.socketId) {
+      this.socketToPlayer.delete(player.socketId);
+      this.playerToSocker.delete(player.id)
     }
     
     this.players.delete(playerId);
@@ -114,6 +126,46 @@ class Game {
     this.lastUpdateTime = Date.now();
     
     return true;
+  }
+
+  /**
+   * Update a player's socket ID (on reconnection)
+   * @param {string} playerId - Player ID
+   * @param {string} socketId - New socket ID
+   * @returns {boolean} - Whether the update was successful
+   */
+  updatePlayerSocket(playerId, socketId) {
+    const player = this.players.get(playerId);
+    if (!player) {
+      return false;
+    }
+    
+    // Remove old socket mapping if exists
+    if (player.socketId) {
+      this.socketToPlayer.delete(player.socketId);
+    }
+    
+    // Update player socket ID
+    player.updateSocketId(socketId);
+    
+    // Add new socket mapping
+    this.socketToPlayer.set(socketId, playerId);
+    this.playerToSocker.set(playerId, socketId)
+    
+    return true;
+  }
+
+  /**
+   * Get player ID from socket ID
+   * @param {string} socketId - Socket ID
+   * @returns {string|null} - Player ID or null if not found
+   */
+  getPlayerIdFromSocket(socketId) {
+    return this.socketToPlayer.get(socketId) || null;
+  }
+
+  getSocketIDFromPlayerID(playerID) {
+    return this.playerToSocker.get(playerID) || null
   }
 
   /**

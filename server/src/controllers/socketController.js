@@ -21,7 +21,7 @@ function initializeSocketController(io) {
         // Only send timer updates when time is up, not on every check
         if (timerStatus.isTimeUp) {
           // Send results to each player
-          broadcastGameResults(io, game, 'time-up');
+          broadcastGameResults(io, game);
         }
       }
     }
@@ -33,11 +33,12 @@ function initializeSocketController(io) {
    * @param {Game} game - Game instance
    * @param {string} reason - Reason for game end
    */
-  const broadcastGameResults = (io, game, reason = 'voting') => {
+  const broadcastGameResults = (io, game) => {
     // Send the results to each player
     for (const playerId of game.players.keys()) {
       const playerState = game.getStateForPlayer(playerId);
-      io.to(playerId).emit('round-ended', playerState);
+      const socketID = game.getSocketIDFromPlayerID(playerId)
+      io.to(socketID).emit('round-ended', playerState);
     }
   };
   
@@ -67,6 +68,7 @@ function initializeSocketController(io) {
         sessionManager.clearDisconnectTimeout(session.playerId);
         const playerState = game.getStateForPlayer(session.playerId);
         const player = playerState.players.find(p => p.id === session.playerId);
+        gameManager.updatePlayerSocket(player.id, socket.id)
         socket.emit('rejoin-success', {
           game: playerState,
           player: player
@@ -143,8 +145,8 @@ function initializeSocketController(io) {
     
     // Toggle ready status
     socket.on('toggle-ready', (_, callback) => {
-      const game = gameManager.getGameByPlayerId(socket.id);
-      
+      const playerId = gameManager.getPlayerIdFromSocketId(socket.id);
+      const game = gameManager.getGameByPlayerId(playerId);
       if (!game) {
         return callback({
           success: false,
@@ -152,12 +154,12 @@ function initializeSocketController(io) {
         });
       }
       
-      const player = game.players.get(socket.id);
+      const player = game.players.get(playerId);
       const isReady = player.toggleReady();
       
       // Notify all players in the game
       io.to(game.id).emit('player-ready-changed', {
-        playerId: socket.id,
+        playerId: playerId,
         isReady
       });
       
@@ -169,7 +171,8 @@ function initializeSocketController(io) {
     
     // Set location packs
     socket.on('set-location-packs', ({ packIds }, callback) => {
-      const game = gameManager.getGameByPlayerId(socket.id);
+      const playerId = gameManager.getPlayerIdFromSocketId(socket.id);
+      const game = gameManager.getGameByPlayerId(playerId);
       
       if (!game) {
         return callback({
@@ -179,7 +182,7 @@ function initializeSocketController(io) {
       }
       
       // Only the host can change location packs
-      if (socket.id !== game.hostId) {
+      if (playerId !== game.hostId) {
         return callback({
           success: false,
           error: 'Only the host can change location packs'
@@ -209,7 +212,8 @@ function initializeSocketController(io) {
     
     // Start the game
     socket.on('start-game', (settings, callback) => {
-      const game = gameManager.getGameByPlayerId(socket.id);
+      const playerId = gameManager.getPlayerIdFromSocketId(socket.id);
+      const game = gameManager.getGameByPlayerId(playerId);
       
       if (!game) {
         return callback({
@@ -219,7 +223,7 @@ function initializeSocketController(io) {
       }
       
       // Only the host can start the game
-      if (socket.id !== game.hostId) {
+      if (playerId !== game.hostId) {
         return callback({
           success: false,
           error: 'Only the host can start the game'
@@ -249,7 +253,8 @@ function initializeSocketController(io) {
       // Send game state to each player
       for (const playerId of game.players.keys()) {
         const playerState = game.getStateForPlayer(playerId);
-        io.to(playerId).emit('game-started', playerState);
+        const socketID = game.getSocketIDFromPlayerID(playerId)
+        io.to(socketID).emit('game-started', playerState);
       }
       
       // Start the timer if there's a time limit
@@ -270,7 +275,8 @@ function initializeSocketController(io) {
     // End turn (move to next player)
     socket.on('end-turn', (_, callback) => {
       // This is just for UI coordination, no game state changes needed
-      const game = gameManager.getGameByPlayerId(socket.id);
+      const playerId = gameManager.getPlayerIdFromSocketId(socket.id);
+      const game = gameManager.getGameByPlayerId(playerId);
       
       if (!game) {
         return callback({
@@ -281,7 +287,7 @@ function initializeSocketController(io) {
       
       // Notify all players that the turn has ended
       io.to(game.id).emit('turn-ended', {
-        nextPlayerId: socket.id // Frontend will determine the next player
+        nextPlayerId: playerId // Frontend will determine the next player
       });
       
       callback({
@@ -291,7 +297,8 @@ function initializeSocketController(io) {
     
     // Call for a vote
     socket.on('call-for-vote', (_, callback) => {
-      const game = gameManager.getGameByPlayerId(socket.id);
+      const playerId = gameManager.getPlayerIdFromSocketId(socket.id);
+      const game = gameManager.getGameByPlayerId(playerId);
       
       if (!game) {
         return callback({
@@ -300,7 +307,7 @@ function initializeSocketController(io) {
         });
       }
       
-      const result = game.callForVote(socket.id);
+      const result = game.callForVote(playerId);
       
       if (!result.success) {
         return callback({
@@ -311,7 +318,7 @@ function initializeSocketController(io) {
       
       // Notify all players about the vote call
       io.to(game.id).emit('vote-called', {
-        playerId: socket.id,
+        playerId: playerId,
         voteCallers: result.voteCallers
       });
       
@@ -330,7 +337,8 @@ function initializeSocketController(io) {
     
     // Spy makes a location guess
     socket.on('spy-guess', ({ locationGuess }, callback) => {
-      const game = gameManager.getGameByPlayerId(socket.id);
+      const playerId = gameManager.getPlayerIdFromSocketId(socket.id);
+      const game = gameManager.getGameByPlayerId(playerId);
       
       if (!game) {
         return callback({
@@ -339,7 +347,7 @@ function initializeSocketController(io) {
         });
       }
       
-      const result = game.makeSpyGuess(socket.id, locationGuess);
+      const result = game.makeSpyGuess(playerId, locationGuess);
       
       if (!result.success) {
         return callback({
@@ -350,14 +358,14 @@ function initializeSocketController(io) {
       
       // Broadcast to all players that the spy made a guess
       io.to(game.id).emit('spy-guessed', {
-        playerId: socket.id,
+        playerId: playerId,
         locationGuess,
         isCorrect: result.isCorrect,
         actualLocation: result.actualLocation
       });
       
       // Broadcast the game results
-      broadcastGameResults(io, game, 'spy-guess');
+      broadcastGameResults(io, game);
       
       callback({
         success: true,
@@ -368,7 +376,8 @@ function initializeSocketController(io) {
     
     // Submit a vote
     socket.on('submit-vote', ({ targetPlayerId }, callback) => {
-      const game = gameManager.getGameByPlayerId(socket.id);
+      const playerId = gameManager.getPlayerIdFromSocketId(socket.id);
+      const game = gameManager.getGameByPlayerId(playerId);
       
       if (!game) {
         return callback({
@@ -378,7 +387,7 @@ function initializeSocketController(io) {
       }
       
       // Vote for the target player
-      const success = game.recordVote(socket.id, targetPlayerId);
+      const success = game.recordVote(playerId, targetPlayerId);
       
       if (!success) {
         return callback({
@@ -389,14 +398,14 @@ function initializeSocketController(io) {
       
       // Notify all players about the vote
       io.to(game.id).emit('player-voted', {
-        playerId: socket.id,
+        playerId: playerId,
         targetPlayerId: targetPlayerId,
         voteCounts: Object.fromEntries(game.votes)
       });
       
       // If all non-spy players have voted, transition to results
       if (game.state === GameState.RESULTS) {
-        broadcastGameResults(io, game, 'voting');
+        broadcastGameResults(io, game);
       }
       
       callback({
@@ -406,7 +415,8 @@ function initializeSocketController(io) {
     
     // Return to lobby
     socket.on('return-to-lobby', (_, callback) => {
-      const game = gameManager.getGameByPlayerId(socket.id);
+      const playerId = gameManager.getPlayerIdFromSocketId(socket.id);
+      const game = gameManager.getGameByPlayerId(playerId);
       
       if (!game) {
         return callback({
@@ -417,7 +427,7 @@ function initializeSocketController(io) {
       
       // Allow any player to return to lobby if the game is in RESULTS state,
       // but only the host can do it at other times
-      if (socket.id !== game.hostId && game.state !== GameState.RESULTS) {
+      if (playerId !== game.hostId && game.state !== GameState.RESULTS) {
         return callback({
           success: false,
           error: 'Only the host can return the game to lobby before the round ends'
@@ -429,7 +439,8 @@ function initializeSocketController(io) {
       // Notify all players
       for (const playerId of game.players.keys()) {
         const playerState = game.getStateForPlayer(playerId);
-        io.to(playerId).emit('returned-to-lobby', {
+        const socketID = game.getSocketIDFromPlayerID(playerId)
+        io.to(socketID).emit('returned-to-lobby', {
           game: playerState
         });
       }
@@ -441,7 +452,8 @@ function initializeSocketController(io) {
     
     // Set round time
     socket.on('set-round-time', ({ minutes, noMaxTime }, callback) => {
-      const game = gameManager.getGameByPlayerId(socket.id);
+      const playerId = gameManager.getPlayerIdFromSocketId(socket.id);
+      const game = gameManager.getGameByPlayerId(playerId);
       
       if (!game) {
         return callback({
@@ -451,7 +463,7 @@ function initializeSocketController(io) {
       }
       
       // Only the host can set round time
-      if (socket.id !== game.hostId) {
+      if (playerId !== game.hostId) {
         return callback({
           success: false,
           error: 'Only the host can set round time'
@@ -478,7 +490,8 @@ function initializeSocketController(io) {
     
     // Get all possible locations
     socket.on('get-possible-locations', (_, callback) => {
-      const game = gameManager.getGameByPlayerId(socket.id);
+      const playerId = gameManager.getPlayerIdFromSocketId(socket.id);
+      const game = gameManager.getGameByPlayerId(playerId);
       
       if (!game) {
         return callback({
@@ -497,7 +510,8 @@ function initializeSocketController(io) {
     
     // End the round early (host only)
     socket.on('end-round-early', (_, callback) => {
-      const game = gameManager.getGameByPlayerId(socket.id);
+      const playerId = gameManager.getPlayerIdFromSocketId(socket.id);
+      const game = gameManager.getGameByPlayerId(playerId);
       
       if (!game) {
         return callback({
@@ -507,7 +521,7 @@ function initializeSocketController(io) {
       }
       
       // Only the host can end the round early
-      if (socket.id !== game.hostId) {
+      if (playerId !== game.hostId) {
         return callback({
           success: false,
           error: 'Only the host can end the round early'
@@ -526,7 +540,7 @@ function initializeSocketController(io) {
       game.endRoundEarly('host-ended');
       
       // Broadcast the game results
-      broadcastGameResults(io, game, 'host-ended');
+      broadcastGameResults(io, game);
       
       callback({
         success: true
@@ -577,7 +591,7 @@ function initializeSocketController(io) {
             if ((game.state === GameState.PLAYING || game.state === GameState.SPY_GUESSING) && 
                 session.playerId === game.getSpyId()) {
               game.endRoundEarly('spy-left');
-              broadcastGameResults(io, game, 'spy-left');
+              broadcastGameResults(io, game);
             }
           }
         });

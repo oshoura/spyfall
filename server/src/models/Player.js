@@ -4,11 +4,13 @@
 class Player {
   /**
    * Create a new player
-   * @param {string} id - Socket ID of the player
+   * @param {string} socketId - Socket ID of the connection
    * @param {string} name - Display name of the player
    */
-  constructor(id, name) {
-    this.id = id;
+  constructor(socketId, name) {
+    // Generate a UUID for the player that's independent of the socket ID
+    this.id = crypto.randomUUID();
+    this.socketId = socketId; // Store the socket ID for communication
     this.name = name;
     this.ready = false;
     this.isSpy = false;
@@ -44,6 +46,14 @@ class Player {
   }
 
   /**
+   * Update the player's socket ID (used on reconnection)
+   * @param {string} socketId - New socket ID
+   */
+  updateSocketId(socketId) {
+    this.socketId = socketId;
+  }
+
+  /**
    * Get player data safe to send to clients
    * @returns {Object} - Player data without sensitive information
    */
@@ -57,5 +67,8 @@ class Player {
     };
   }
 }
+
+// Import crypto module at the top
+const crypto = require('crypto');
 
 module.exports = Player; 

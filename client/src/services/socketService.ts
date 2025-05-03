@@ -1,6 +1,10 @@
 import { io, Socket } from 'socket.io-client';
 import { ref } from 'vue';
 import sessionService from './sessionService';
+import { useRouter } from 'vue-router';
+// import { useRouter } from 'vue-router'
+
+const router = useRouter();
 
 // Types
 export interface Player {
@@ -102,10 +106,10 @@ class SocketService {
 
     // Handle rejoin responses
     this.socket.on('rejoin-success', (response) => {
-      console.log('Rejoined game:', response);
       this.gameState.value = response.game;
       this.playerId.value = response.player?.id || null;
       this.error.value = null;
+      router.push(`/lobby`);
     });
 
     this.socket.on('rejoin-error', (response) => {
@@ -172,11 +176,13 @@ class SocketService {
 
     // Game started
     this.socket.on('game-started', (gameState) => {
+      console.log("socket service game started", gameState)
       this.gameState.value = gameState;
     });
 
     // Phase change
     this.socket.on('phase-change', ({ phase }) => {
+      console.log("phase change", phase)
       if (this.gameState.value) {
         this.gameState.value.state = phase;
       }
@@ -213,6 +219,7 @@ class SocketService {
 
     // Round started
     this.socket.on('round-started', (gameState) => {
+      console.log("round started")
       this.gameState.value = gameState;
     });
 

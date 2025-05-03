@@ -1,5 +1,13 @@
 import { ref } from 'vue';
 
+function getStorage(): Storage {
+  if (typeof window !== 'undefined' && window.localStorage && window.sessionStorage) {
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    return isLocal ? window.sessionStorage : window.localStorage;
+  }
+  return window.localStorage;
+}
+
 class SessionService {
   private sessionToken = ref<string | null>(null);
   private readonly SESSION_KEY = 'spyfall_session_token';
@@ -9,7 +17,7 @@ class SessionService {
   }
 
   private loadSession() {
-    this.sessionToken.value = localStorage.getItem(this.SESSION_KEY);
+    this.sessionToken.value = getStorage().getItem(this.SESSION_KEY);
   }
 
   public getSessionToken(): string | null {
@@ -19,13 +27,13 @@ class SessionService {
   public generateNewSession(): string {
     const token = crypto.randomUUID();
     this.sessionToken.value = token;
-    localStorage.setItem(this.SESSION_KEY, token);
+    getStorage().setItem(this.SESSION_KEY, token);
     return token;
   }
 
   public clearSession() {
     this.sessionToken.value = null;
-    localStorage.removeItem(this.SESSION_KEY);
+    getStorage().removeItem(this.SESSION_KEY);
   }
 
   public hasSession(): boolean {
