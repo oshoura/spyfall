@@ -45,33 +45,71 @@
                   }">
                 {{ player.ready ? 'Ready' : 'Not Ready' }}
               </div>
-              <DropdownMenu v-if="isHost && player.id !== playerId">
+              
+              <!-- Dropdown Menu (different content based on player) -->
+              <DropdownMenu>
                 <DropdownMenuTrigger as-child>
-                  <Button variant="ghost" class="h-8 w-8 p-0">
+                  <!-- Only show trigger if it's host viewing others OR it's the player themselves -->
+                  <Button v-if="(isHost && player.id !== playerId) || player.id === playerId" variant="ghost" class="h-8 w-8 p-0">
                     <span class="sr-only">Open menu</span>
                     <MoreHorizontal class="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem 
-                    @click="removePlayer(player.id)"
-                    class="text-red-600 focus:text-red-600 focus:bg-red-50"
-                    :disabled="isLoading"
-                  >
-                    Remove Player
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    @click="makeHost(player.id)"
-                    :disabled="isLoading"
-                  >
-                    Make Host
-                  </DropdownMenuItem>
+                  <!-- Content for Own Player -->
+                  <template v-if="player.id === playerId">
+                    <DropdownMenuItem @click="openChangeNameDialog">
+                      Change Name
+                    </DropdownMenuItem>
+                    <!-- Add other self-actions here if needed -->
+                  </template>
+                  
+                  <!-- Content for Host Viewing Other Players -->
+                  <template v-else-if="isHost">
+                    <DropdownMenuItem 
+                      @click="removePlayer(player.id)"
+                      class="text-red-600 focus:text-red-600 focus:bg-red-50"
+                      :disabled="isLoading"
+                    >
+                      Remove Player
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      @click="makeHost(player.id)"
+                      :disabled="isLoading"
+                    >
+                      Make Host
+                    </DropdownMenuItem>
+                  </template>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </div>
         </div>
         
+        <!-- Separate Change Name Dialog (controlled programmatically) -->
+        <Dialog v-model:open="isChangeNameDialogOpen">
+          <DialogContent class="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Change Your Name</DialogTitle>
+              <DialogDescription>
+                Enter your new display name below.
+              </DialogDescription>
+            </DialogHeader>
+            <div class="grid gap-4 py-4">
+              <div class="grid grid-cols-4 items-center gap-4">
+                <Label for="name" class="text-right">Name</Label>
+                <Input id="name" v-model="newName" class="col-span-3" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" @click="isChangeNameDialogOpen = false">Cancel</Button>
+              <Button type="submit" @click="submitChangeName" :disabled="isLoading || !newName.trim()">
+                {{ isLoading ? 'Saving...' : 'Save changes' }}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         <div class="mt-4 text-center">
           <p v-if="players.length < 3" class="text-orange-600 font-medium">
             Need {{ 3 - players.length }} more player{{ 3 - players.length > 1 ? 's' : '' }} to start the game
@@ -194,12 +232,27 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { MoreHorizontal } from 'lucide-vue-next'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 const router = useRouter()
 const isLoading = ref(false)
 const errorMessage = ref('')
 const rejoinTimeout = ref<NodeJS.Timeout | null>(null)
 const { toast } = useToast()
+
+// State for name change dialog
+const isChangeNameDialogOpen = ref(false)
+const newName = ref('')
 
 // Get game state from socket service
 const gameState = computed(() => socketService.gameState.value)
@@ -419,6 +472,37 @@ const makeHost = async (newHostId: string) => {
   } catch (error) {
     console.error('Error making player host:', error);
     errorMessage.value = error instanceof Error ? error.message : 'Failed to make player host';
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+// Add methods for name change dialog
+const openChangeNameDialog = () => {
+  const currentPlayer = players.value.find(p => p.id === playerId.value);
+  if (currentPlayer) {
+    newName.value = currentPlayer.name; // Pre-fill with current name
+  }
+  isChangeNameDialogOpen.value = true;
+};
+
+const submitChangeName = async () => {
+  if (!newName.value.trim() || isLoading.value) return;
+
+  try {
+    isLoading.value = true;
+    errorMessage.value = '';
+    await socketService.changeName(newName.value.trim());
+    isChangeNameDialogOpen.value = false; // Close dialog on success
+    toast({
+      title: "Name Updated",
+      description: `Your name has been changed to ${newName.value.trim()}.`,
+      duration: 3000,
+    })
+  } catch (error) {
+    console.error('Error changing name:', error);
+    errorMessage.value = error instanceof Error ? error.message : 'Failed to change name';
+    // Keep dialog open on error
   } finally {
     isLoading.value = false;
   }

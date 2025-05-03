@@ -566,6 +566,34 @@ function initializeSocketController(io) {
       if (callback) callback();
     });
     
+    // Handle player changing their name
+    socket.on('change-name', ({ newName }, callback) => {
+      const playerId = gameManager.getPlayerIdFromSocketId(socket.id);
+      const game = gameManager.getGameByPlayerId(playerId);
+
+      if (!game) {
+        return callback({ success: false, error: 'Game not found' });
+      }
+
+      const player = game.players.get(playerId);
+      if (!player) {
+        return callback({ success: false, error: 'Player not found' });
+      }
+
+      // Basic validation (you might want more robust validation)
+      const trimmedName = newName?.trim();
+      if (!trimmedName || trimmedName.length === 0 || trimmedName.length > 20) { // Example length limit
+        return callback({ success: false, error: 'Invalid name provided' });
+      }
+      
+      player.setName(trimmedName);
+
+      // Notify all players in the game room about the name change
+      io.to(game.id).emit('player-name-changed', { playerId, newName: trimmedName });
+
+      callback({ success: true, playerId }); // Return playerId for client-side confirmation
+    });
+    
     // Handle host assigning a new host
     socket.on('make-host', ({ newHostId }, callback) => {
       const currentHostId = gameManager.getPlayerIdFromSocketId(socket.id);

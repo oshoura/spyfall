@@ -46,6 +46,17 @@ class Player {
   }
 
   /**
+   * Set the player's name
+   * @param {string} newName - The new name
+   */
+  setName(newName) {
+    // Add validation if needed (e.g., length, characters)
+    if (newName && newName.trim().length > 0) {
+      this.name = newName.trim();
+    }
+  }
+
+  /**
    * Update the player's socket ID (used on reconnection)
    * @param {string} socketId - New socket ID
    */

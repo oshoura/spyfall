@@ -293,6 +293,16 @@ class SocketService {
         this.gameState.value.hostId = newHostId;
       }
     });
+
+    // Player name changed
+    this.socket.on('player-name-changed', ({ playerId, newName }) => {
+      if (this.gameState.value) {
+        const player = this.gameState.value.players.find(p => p.id === playerId);
+        if (player) {
+          player.name = newName;
+        }
+      }
+    });
   }
 
   // Create a new game
@@ -673,6 +683,32 @@ class SocketService {
           resolve();
         } else {
           reject(new Error(response.error || 'Failed to assign new host'));
+        }
+      });
+    });
+  }
+
+  /**
+   * Change the player's own name
+   *
+   * @param {string} newName - The desired new name
+   */
+  public changeName(newName: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('Socket not initialized'));
+        return;
+      }
+
+      this.socket.emit('change-name', { newName }, (response: any) => {
+        if (response.success) {
+          // Update local player name if stored separately
+          if (this.playerId.value === response.playerId) {
+            this.playerName.value = newName;
+          }
+          resolve();
+        } else {
+          reject(new Error(response.error || 'Failed to change name'));
         }
       });
     });
