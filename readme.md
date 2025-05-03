@@ -11,6 +11,16 @@ A real-time multiplayer implementation of the popular party game Spyfall. In thi
 - Voting system to identify the spy
 - Multiple rounds with different locations
 
+## Changelog
+
+### May 3, 2024
+- Added session persistence to prevent disconnects on page refresh
+- Added 1 minute grace period to rejoin after closing page
+- Added host controls (remove players, assign new host)
+- Added ability for players to leave party and change name
+- Improved mobile responsiveness and party joining flow
+- Various bug fixes and UI improvements
+
 ## Project Structure
 
 The project is divided into two main parts:
