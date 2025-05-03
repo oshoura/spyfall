@@ -235,7 +235,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -243,7 +242,7 @@ import { Label } from '@/components/ui/label'
 const router = useRouter()
 const isLoading = ref(false)
 const errorMessage = ref('')
-const rejoinTimeout = ref<NodeJS.Timeout | null>(null)
+const rejoinTimeout = ref<number | null>(null)
 const { toast } = useToast()
 
 // State for name change dialog
@@ -322,6 +321,7 @@ onMounted(() => {
 watch(() => socketService.error.value, (err) => {
   if (err && err.includes('Session not found')) {
     if (rejoinTimeout.value) clearTimeout(rejoinTimeout.value)
+    rejoinTimeout.value = null
     isLoading.value = false
     router.push('/')
   }
