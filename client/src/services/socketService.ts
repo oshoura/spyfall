@@ -104,6 +104,7 @@ class SocketService {
       this.gameState.value = response.game;
       this.playerId.value = response.player?.id || null;
       this.error.value = null;
+      console.log('Successfully rejoined game', response.game.id);
       if (!window.location.pathname.includes('/lobby') && !window.location.pathname.includes('/play')) {
         window.location.href = '/lobby';
       }
@@ -146,7 +147,7 @@ class SocketService {
     const sessionToken = sessionService.getSessionToken();
     if (!sessionToken) return;
 
-    console.log('Rejoining game with session token:', sessionToken);
+    console.log('Found existing session:', sessionToken);
     this.socket.emit('rejoin-game', { sessionToken });
   }
 
