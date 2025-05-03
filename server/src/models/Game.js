@@ -659,6 +659,20 @@ class Game {
     
     return state;
   }
+
+  /**
+   * Set a new host for the game
+   * @param {string} newHostId - ID of the player to make host
+   * @returns {boolean} - Whether the host was changed successfully
+   */
+  setHost(newHostId) {
+    if (!this.players.has(newHostId)) {
+      return false; // New host must be a current player
+    }
+    this.hostId = newHostId;
+    this.lastUpdateTime = Date.now();
+    return true;
+  }
 }
 
 module.exports = { Game, GameState }; 

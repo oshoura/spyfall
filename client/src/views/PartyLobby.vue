@@ -60,6 +60,12 @@
                   >
                     Remove Player
                   </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    @click="makeHost(player.id)"
+                    :disabled="isLoading"
+                  >
+                    Make Host
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -395,6 +401,24 @@ const removePlayer = async (playerIdToRemove: string) => {
   } catch (error) {
     console.error('Error removing player:', error);
     errorMessage.value = error instanceof Error ? error.message : 'Failed to remove player';
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+// Add this method
+const makeHost = async (newHostId: string) => {
+  if (!isHost.value || isLoading.value) return;
+  
+  try {
+    isLoading.value = true;
+    errorMessage.value = '';
+    // Assuming socketService will have a 'makeHost' method
+    await socketService.makeHost(newHostId);
+    // Host change will be reflected via socket event
+  } catch (error) {
+    console.error('Error making player host:', error);
+    errorMessage.value = error instanceof Error ? error.message : 'Failed to make player host';
   } finally {
     isLoading.value = false;
   }

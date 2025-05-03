@@ -566,6 +566,35 @@ function initializeSocketController(io) {
       if (callback) callback();
     });
     
+    // Handle host assigning a new host
+    socket.on('make-host', ({ newHostId }, callback) => {
+      const currentHostId = gameManager.getPlayerIdFromSocketId(socket.id);
+      const game = gameManager.getGameByPlayerId(currentHostId);
+
+      if (!game) {
+        return callback({ success: false, error: 'Game not found' });
+      }
+
+      if (game.hostId !== currentHostId) {
+        return callback({ success: false, error: 'Only the current host can assign a new host' });
+      }
+
+      if (currentHostId === newHostId) {
+        return callback({ success: false, error: 'Cannot assign yourself as host' });
+      }
+      
+      const success = game.setHost(newHostId);
+
+      if (!success) {
+        return callback({ success: false, error: 'Failed to set new host (player not found?)' });
+      }
+
+      // Notify all players in the game room about the host change
+      io.to(game.id).emit('host-changed', { newHostId });
+
+      callback({ success: true });
+    });
+    
     // Handle host removing a player
     socket.on('remove-player', ({ playerIdToRemove }, callback) => {
       const hostPlayerId = gameManager.getPlayerIdFromSocketId(socket.id);

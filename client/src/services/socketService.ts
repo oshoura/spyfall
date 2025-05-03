@@ -285,6 +285,13 @@ class SocketService {
     this.socket.on('round-ended', (gameState) => {
       this.gameState.value = gameState;
     });
+
+    // Host changed
+    this.socket.on('host-changed', ({ newHostId }) => {
+      if (this.gameState.value) {
+        this.gameState.value.hostId = newHostId;
+      }
+    });
   }
 
   // Create a new game
@@ -644,6 +651,28 @@ class SocketService {
         this.playerId.value = null;
         this.playerName.value = '';
         resolve();
+      });
+    });
+  }
+
+  /**
+   * Assign a new host (current host only)
+   *
+   * @param {string} newHostId - ID of the player to make host
+   */
+  public makeHost(newHostId: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('Socket not initialized'));
+        return;
+      }
+
+      this.socket.emit('make-host', { newHostId }, (response: any) => {
+        if (response.success) {
+          resolve();
+        } else {
+          reject(new Error(response.error || 'Failed to assign new host'));
+        }
       });
     });
   }
