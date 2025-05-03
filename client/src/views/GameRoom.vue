@@ -239,7 +239,7 @@
   
   <!-- Modal for round results -->
   <Dialog v-model:open="showRoundResultsModal">
-    <DialogContent class="sm:max-w-md">
+    <DialogContent class="sm:max-w-md overflow-y-scroll max-h-screen">
       <DialogHeader>
         <DialogTitle class="text-xl">
           <span v-if="votingResults?.spyWon || votingResults?.reason === 'time-up' || votingResults?.reason === 'host-ended'" class="text-orange-600">The Spy Won!</span>
@@ -508,6 +508,12 @@ const startTimer = (durationInMinutes: number) => {
     }
   }, 1000);
 };
+
+watch(showRoundResultsModal, (newVal) => {
+  if (!newVal) {
+    router.push('/lobby')
+  }
+})
 
 // Watch for state changes to fetch locations when entering spy_guessing state
 watch(() => gameState.value?.state, (newState) => {
