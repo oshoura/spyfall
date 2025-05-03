@@ -11,8 +11,8 @@
         {{ errorMessage }}
       </div>
       
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
-        <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto" :class="{ 'md:grid-cols-1': !showCreateParty }">
+        <div v-if="showCreateParty" class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all">
           <h2 class="text-2xl font-bold mb-6 text-gray-800">Create New Party</h2>
           <div class="space-y-4">
             <Input
@@ -34,15 +34,25 @@
           </div>
         </div>
         
-        <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all">
-          <h2 class="text-2xl font-bold mb-6 text-gray-800">Join Party</h2>
+        <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all" :class="{ 'md:col-span-1': !showCreateParty }">
+          <div class="flex items-center gap-2">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">Join Party</h2>
+            <button 
+              v-if="partyCodeFromQuery"
+              @click="partyCodeFromQuery = false"
+              class="text-gray-400 hover:text-gray-600"
+              title="Edit party code"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+            </button>
+          </div>
           <div class="space-y-4">
             <Input
               id="party-code"
               v-model="partyCode"
               type="text"
               placeholder="Party Code"
-              :disabled="isLoading"
+              :disabled="isLoading || partyCodeFromQuery"
               class="text-base py-6 px-4"
             />
             <Input
@@ -61,11 +71,17 @@
             >
               <span class="text-lg font-medium">{{ isLoading ? 'Joining...' : 'Join Party' }}</span>
             </Button>
+            
+            <div v-if="!showCreateParty" class="text-center pt-4">
+              <Button variant="ghost" @click="switchToCreateMode" class="text-gray-600 hover:text-orange-600">
+                Or Create a New Party
+              </Button>
+            </div>
           </div>
         </div>
       </div>
       
-      <div class="text-center mt-10">
+      <div v-if="!showCreateParty" class="text-center mt-10">
         <Button asChild variant="ghost" class="text-gray-600 hover:text-orange-600">
           <RouterLink to="/">
             <span class="flex items-center gap-2">
@@ -80,7 +96,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { RouterLink } from 'vue-router'
 import { Button } from '@/components/ui/button'
@@ -94,15 +110,28 @@ const joinPlayerName = ref('')
 const partyCode = ref('')
 const isLoading = ref(false)
 const errorMessage = ref('')
+const partyCodeFromQuery = ref(false)
+const showCreateParty = ref(true)
 
 // Check for party code in URL query parameter on mount
 onMounted(() => {
   const codeParam = route.query.code
   if (codeParam && typeof codeParam === 'string') {
     partyCode.value = codeParam
+    partyCodeFromQuery.value = true
+    showCreateParty.value = false
     document.getElementById('join-name')?.focus()
   }
 })
+
+const switchToCreateMode = () => {
+  showCreateParty.value = true
+  partyCode.value = '' // Optionally clear the code
+  joinPlayerName.value = '' // Optionally clear the name
+  partyCodeFromQuery.value = false
+  errorMessage.value = '' // Clear any previous error
+  nextTick(() => document.getElementById('create-name')?.focus()) 
+}
 
 const createParty = async () => {
   if (!createPlayerName.value) {
