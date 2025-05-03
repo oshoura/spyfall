@@ -292,6 +292,9 @@ class SocketService {
       if (this.gameState.value) {
         this.gameState.value.hostId = newHostId;
       }
+      if (newHostId === this.playerId.value) {
+        window.location.reload();
+      }
     });
 
     // Player name changed
