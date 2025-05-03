@@ -43,7 +43,6 @@ const locationPacks = {
     description: "A mix of public, entertainment, and unique settings for varied gameplay.",
     locations: [
       "University",
-      "Spyfall 2",
       "Amusement Park",
       "Art Museum",
       "Candy Factory",
