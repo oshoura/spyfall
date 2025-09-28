@@ -16,14 +16,11 @@
             </RouterLink>
           </div>
           <div class="w-full sm:w-1/2">
-            <Dialog v-model:open="headerDialogOpen">
-              <DialogTrigger asChild>
-                <Button variant="outline" size="lg" class="w-full text-lg font-bold border-white text-slate-700 border-2 hover:bg-white/10 hover:text-white">
-                  How to Play
-                </Button>
-              </DialogTrigger>
-              <HowToPlayModal />
-            </Dialog>
+            <RouterLink to="/how-to-play" class="block w-full">
+              <Button variant="outline" size="lg" class="w-full text-lg font-bold border-white text-slate-700 border-2 hover:bg-white/10 hover:text-white">
+                How to Play
+              </Button>
+            </RouterLink>
           </div>
         </div>
       </div>
@@ -56,14 +53,11 @@
           </div>
         </div>
         <div class="text-center mt-8 md:mt-10">
-          <Dialog v-model:open="learnMoreDialogOpen">
-            <DialogTrigger asChild>
-              <Button variant="orange" size="lg" class="text-lg font-bold px-8">
-                Learn More
-              </Button>
-            </DialogTrigger>
-            <HowToPlayModal />
-          </Dialog>
+          <RouterLink to="/how-to-play">
+            <Button variant="orange" size="lg" class="text-lg font-bold px-8">
+              Learn More
+            </Button>
+          </RouterLink>
         </div>
       </div>
     </div>
@@ -79,7 +73,10 @@
           </Button>
         </RouterLink>
         <p class="text-sm md:text-base text-white/70 mt-8 pt-8 border-t border-white/20">
-          &copy; {{ new Date().getFullYear() }} Spyfall Game. All rights reserved. | Made by <a href="https://omarshoura.com" target="_blank" class="underline hover:text-white">Omar</a>
+          Made by Omar ·
+          <a href="https://forms.gle/KDF9W6pbBzPhZmAGA" target="_blank" rel="noopener noreferrer" class="underline hover:text-white">
+            Feedback, bugs, comments
+          </a>
         </p>
       </div>
     </section>
@@ -87,16 +84,6 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogTrigger
-} from '@/components/ui/dialog';
-import HowToPlayModal from '@/components/HowToPlayModal.vue';
-
-// Dialog state
-const headerDialogOpen = ref(false);
-const learnMoreDialogOpen = ref(false);
 </script> 

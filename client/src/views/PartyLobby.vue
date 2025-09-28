@@ -1,5 +1,6 @@
 <template>
   <div class="min-h-screen bg-gray-50 py-12 md:py-16">
+    <AppHeader :intercept_back="true" @back="handleBack" />
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="text-center mb-10">
         <img src="/images/spyfall_logo.jpg" alt="Spyfall Logo" class="w-20 h-20 bg-stone-200 rounded-lg object-cover mb-6 mx-auto" />
@@ -207,6 +208,16 @@
           <span class="text-lg font-medium">{{ isLoading ? 'Starting...' : 'Start Game' }}</span>
         </Button>
       </div>
+
+      <!-- Footer -->
+      <div class="text-center mt-12">
+        <p class="text-gray-500 text-sm">
+          Made by Omar ·
+          <a href="https://forms.gle/KDF9W6pbBzPhZmAGA" target="_blank" rel="noopener noreferrer" class="underline hover:text-gray-700">
+            Feedback, bugs, comments
+          </a>
+        </p>
+      </div>
     </div>
   </div>
   
@@ -216,6 +227,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import AppHeader from '@/components/AppHeader.vue'
 import { Button } from '@/components/ui/button'
 import Toaster from '@/components/ui/toast/Toaster.vue'
 import { useToast } from '@/components/ui/toast/use-toast'
@@ -240,6 +252,23 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 const router = useRouter()
+// Attempt clean leave on back click
+const handleBack = async () => {
+  try {
+    await socketService.leaveGame()
+  } catch {}
+  router.push('/')
+}
+
+// Try to leave on tab close / refresh
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    try {
+      navigator.sendBeacon?.('/__noop', '');
+      socketService.leaveGame()
+    } catch {}
+  })
+}
 const isLoading = ref(false)
 const errorMessage = ref('')
 const rejoinTimeout = ref<number | null>(null)
@@ -272,7 +301,7 @@ const canStartGame = computed(() => {
 })
 
 // Round time in minutes - default to 2
-const roundTime = ref(2)
+const roundTime = ref(5)
 
 // Add this to the computed properties
 const locationPacks = computed(() => gameState.value?.locationPacks || [])

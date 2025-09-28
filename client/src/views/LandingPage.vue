@@ -1,5 +1,6 @@
 <template>
   <div class="min-h-screen bg-gray-50 py-12 md:py-16">
+    <AppHeader />
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="text-center mb-10">
         <img src="/images/spyfall_logo.jpg" alt="Spyfall Logo" class="w-20 h-20 bg-stone-200 rounded-lg object-cover mb-6 mx-auto" />
@@ -101,6 +102,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { RouterLink } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import AppHeader from '@/components/AppHeader.vue'
 import socketService from '../services/socketService'
 
 const router = useRouter()

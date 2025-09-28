@@ -3,7 +3,8 @@ import HomePage from '../views/HomePage.vue'
 import LandingPage from '../views/LandingPage.vue'
 import PartyLobby from '../views/PartyLobby.vue'
 import GameRoom from '../views/GameRoom.vue'
-import TestPage from '../views/TestPage.vue'
+import HowToPlay from '../views/HowToPlay.vue'
+// import TestPage from '../views/TestPage.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -29,10 +30,15 @@ const router = createRouter({
       component: GameRoom
     },
     {
-      path: '/hidden',
-      name: 'test-page',
-      component: TestPage
-    }
+      path: '/how-to-play',
+      name: 'how-to-play',
+      component: HowToPlay
+    },
+    // {
+    //   path: '/hidden',
+    //   name: 'test-page',
+    //   component: TestPage
+    // }
   ]
 })
 

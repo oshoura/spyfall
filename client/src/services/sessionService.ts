@@ -1,11 +1,11 @@
 import { ref } from 'vue';
 
 function getStorage(): Storage {
-  if (typeof window !== 'undefined' && window.localStorage && window.sessionStorage) {
-    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    return isLocal ? window.sessionStorage : window.localStorage;
-  }
-  return window.localStorage;
+  // if (typeof window !== 'undefined' && window.localStorage && window.sessionStorage) {
+  //   const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  //   return isLocal ? window.sessionStorage : window.localStorage;
+  // }
+  return window.sessionStorage;
 }
 
 class SessionService {

@@ -11,6 +11,17 @@
           <div class="flex items-center justify-between w-full">
             <div class="text-xl font-bold text-gray-800">Round {{ gameState?.round || 1 }}</div>
             <div class="flex items-center gap-2">
+              <RouterLink to="/how-to-play" class="inline-block">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  class="flex items-center gap-1"
+                  title="How to Play - Get help with game rules and strategies"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-help-circle"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><path d="M12 17h.01"></path></svg>
+                  <span class="text-xs">Help</span>
+                </Button>
+              </RouterLink>
               <Button 
                 @click="toggleInfoVisibility" 
                 variant="ghost" 
@@ -357,7 +368,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, RouterLink } from 'vue-router'
 import socketService from '../services/socketService'
 import type { Player } from '../services/socketService'
 import { Button } from '@/components/ui/button'
