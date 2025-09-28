@@ -16,11 +16,10 @@
 </template>
 
 <script setup lang="ts">
-import { RouterLink, useRouter } from 'vue-router'
+import { RouterLink } from 'vue-router'
 import { Button } from '@/components/ui/button'
 const props = defineProps<{ show_play_button?: boolean, intercept_back?: boolean }>()
 const emit = defineEmits<{ (e: 'back'): void }>()
-const router = useRouter()
 
 const onBackClick = (e: MouseEvent) => {
   if (props.intercept_back) {
