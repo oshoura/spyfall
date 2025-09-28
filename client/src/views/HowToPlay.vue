@@ -187,4 +187,32 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router';
 import AppHeader from '@/components/AppHeader.vue';
+import { onMounted, onBeforeUnmount } from 'vue'
+
+let json_ld_el: HTMLScriptElement | null = null
+
+onMounted(() => {
+  const data = {
+    '@context': 'https://schema.org',
+    '@type': 'HowTo',
+    name: 'How to Play Spyfall',
+    description: 'Learn the rules, roles, and strategies to play Spyfall online with friends.',
+    totalTime: 'PT10M',
+    step: [
+      { '@type': 'HowToStep', name: 'Create or Join a Party', text: 'Create a room or join with a code to start a game with friends.' },
+      { '@type': 'HowToStep', name: 'Assign Roles', text: 'One player is the spy who does not know the location. Others get the same secret location.' },
+      { '@type': 'HowToStep', name: 'Ask Questions', text: 'Players ask each other questions to reveal who might be the spy without revealing the location.' },
+      { '@type': 'HowToStep', name: 'Vote or Guess', text: 'Vote to catch the spy, or the spy can guess the location to win.' }
+    ]
+  }
+  json_ld_el = document.createElement('script')
+  json_ld_el.type = 'application/ld+json'
+  json_ld_el.text = JSON.stringify(data)
+  document.head.appendChild(json_ld_el)
+})
+
+onBeforeUnmount(() => {
+  if (json_ld_el && json_ld_el.parentNode) json_ld_el.parentNode.removeChild(json_ld_el)
+  json_ld_el = null
+})
 </script>

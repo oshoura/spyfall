@@ -21,7 +21,8 @@
 
       <!-- Players List -->
       <div class="bg-white rounded-lg shadow p-4 md:p-8 mb-6">
-        <h2 class="text-2xl font-bold mb-6 text-gray-800">Players ({{ players.length }})</h2>
+        <h2 class="text-2xl font-bold text-gray-800">Players ({{ players.length }})</h2>
+        <p class="text-sm text-gray-500 mt-1 mb-6">Refreshing the page will kick you out of the game.</p>
         
         <div class="flex flex-col divide-y divide-gray-200">
           <div v-for="player in players" :key="player.id"
@@ -212,7 +213,7 @@
       <!-- Footer -->
       <div class="text-center mt-12">
         <p class="text-gray-500 text-sm">
-          Made by Omar ·
+          Made by <a href="https://omarshoura.com" target="_blank" rel="noopener noreferrer" class="underline hover:text-gray-700">Omar</a> ·
           <a href="https://forms.gle/KDF9W6pbBzPhZmAGA" target="_blank" rel="noopener noreferrer" class="underline hover:text-gray-700">
             Feedback, bugs, comments
           </a>

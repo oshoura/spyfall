@@ -73,7 +73,7 @@
           </Button>
         </RouterLink>
         <p class="text-sm md:text-base text-white/70 mt-8 pt-8 border-t border-white/20">
-          Made by Omar ·
+          Made by <a href="https://omarshoura.com" target="_blank" rel="noopener noreferrer" class="underline hover:text-white">Omar</a> ·
           <a href="https://forms.gle/KDF9W6pbBzPhZmAGA" target="_blank" rel="noopener noreferrer" class="underline hover:text-white">
             Feedback, bugs, comments
           </a>
